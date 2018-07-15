@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+option optimize_for = LITE_RUNTIME;
+
+package tyr.runtime;
+
+message Message {
+    bytes header = 1;
+    bytes message = 2;
+    bytes client_identifier = 3; // not modified
+}
+
+message RouteRequest {
+    string path = 1;
+    Message message = 2;
+}
+
+message RouteResponse {
+    bool succeeded = 1;
+}
+
+message IdentifyRequest {}
+
+message IdentifyResponse {
+    ProcessorHost id = 1;
+}
+
+message ProcessorHost {
+    string address = 1; // actual address (k8s service, for example)
+    string module = 2; // thing being run
+}
+
+message ResultRequest {
+    bytes identifier = 1;
+}
+
+message ResultResponse {
+    Message message = 1;
+}
