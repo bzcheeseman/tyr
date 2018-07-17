@@ -9,6 +9,7 @@ llvm_map_components_to_libnames(LLVM_LIBS all)
 set(ALL_CXX_SOURCE_FILES ${COMPILE_INCLUDE} ${COMPILE_SOURCES} ${ALL_CXX_SOURCE_FILES} PARENT_SCOPE)
 
 add_library(tyr-compile SHARED ${COMPILE_SOURCES} ${COMPILE_INCLUDE})
+target_compile_options(tyr-compile PRIVATE "-fno-rtti")
 target_link_libraries(tyr-compile PRIVATE ${LLVM_LIBS})
 target_include_directories(tyr-compile
         PUBLIC
