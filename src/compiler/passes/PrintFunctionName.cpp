@@ -35,14 +35,25 @@ namespace {
     PrintFnNameIfReadOnly() : FunctionPass(ID) {}
 
     bool runOnFunction(Function &F) override {
-      if (F.hasFnAttribute(Attribute::AttrKind::ReadOnly)) {
-        errs() << "ReadOnly: ";
-        errs().write_escaped(F.getName()) << '\n';
+      if (F.getName() != "route") {
+        return false;
       }
-      if (F.hasFnAttribute(Attribute::AttrKind::ReadNone)) {
-        errs() << "ReadNone: ";
-        errs().write_escaped(F.getName()) << '\n';
+
+      for (auto &BB : F) {
+        for (auto &instr : BB) {
+          CallInst *call;
+          if ((call = dyn_cast<CallInst>(&instr))) {
+            Value *route_value = call->getOperand(0);
+            Function *foi = dyn_cast<Function>(call->getOperand(1));
+            errs() << *route_value << " " << *foi << "\n"; // this should be a function pointer (EVEN BETTER ITS THE FUNCTION)
+            // get the argument in the [1] position
+//            for (auto &arg : func->args()) {
+//              errs() << arg << "\n";
+//            }
+          }
+        }
       }
+
       return false;
     }
 
