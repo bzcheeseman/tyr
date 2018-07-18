@@ -29,27 +29,47 @@
 using namespace llvm;
 
 namespace {
-  // Simple pass to check memory read attributes
-  struct PrintFnNameIfReadOnly : public FunctionPass {
+  bool checkFunctionMarkCall(Function *f) {
+    return f->getName() == "mark_tyr_function";
+  }
+
+  struct FindFunctionsMarkedForRouting : public FunctionPass {
     static char ID;
-    PrintFnNameIfReadOnly() : FunctionPass(ID) {}
+    FindFunctionsMarkedForRouting() : FunctionPass(ID) {}
 
     bool runOnFunction(Function &F) override {
-      if (F.getName() != "route") {
-        return false;
+      bool should_run = false;
+      for (auto &BB : F) {
+        for (auto &I : BB) {
+          CallInst *call = dyn_cast<CallInst>(&I);
+          if (call && checkFunctionMarkCall(call->getCalledFunction())) {
+            should_run = true;
+            break;
+          }
+        }
       }
 
+      if (!should_run) return false;
+
       for (auto &BB : F) {
-        for (auto &instr : BB) {
-          CallInst *call;
-          if ((call = dyn_cast<CallInst>(&instr))) {
+        for (auto &I : BB) {
+          CallInst *call = dyn_cast<CallInst>(&I);
+          if (call && (call->getNumOperands() > 1)) {
+            bool mark_call_exists = false; CallInst *mark_call;
+            for (auto &bb : *call->getCalledFunction()) {
+              for (auto &i : bb) {
+                if ((mark_call = dyn_cast<CallInst>(&i)) && checkFunctionMarkCall(mark_call->getCalledFunction())) {
+                  mark_call_exists = true;
+                }
+              }
+            }
+            if (!mark_call_exists) continue;
+
             Value *route_value = call->getOperand(0);
             Function *foi = dyn_cast<Function>(call->getOperand(1));
-            errs() << *route_value << " " << *foi << "\n"; // this should be a function pointer (EVEN BETTER ITS THE FUNCTION)
-            // get the argument in the [1] position
-//            for (auto &arg : func->args()) {
-//              errs() << arg << "\n";
-//            }
+            if (foi) {
+              errs() << *route_value << " " << *foi << "\n"; // prints the function corresponding to the arg we want
+            }
           }
         }
       }
@@ -64,7 +84,8 @@ namespace {
   }; // end of struct PrintFnName
 }  // end of anonymous namespace
 
-char PrintFnNameIfReadOnly::ID = 0;
-static RegisterPass<PrintFnNameIfReadOnly> X("printfn", "Prints function names if they have the readonly attribute",
+char FindFunctionsMarkedForRouting::ID = 0;
+static RegisterPass<FindFunctionsMarkedForRouting> X("find-marked",
+                                                     "Finds functions that are marked with the mark_tyr_function call",
                              false /* Only looks at CFG */,
                              false /* Analysis Pass */);
