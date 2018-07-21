@@ -1,5 +1,5 @@
 //
-// Created by Aman LaChapelle on 7/16/18.
+// Created by Aman LaChapelle on 7/14/18.
 //
 // tyr
 // Copyright (c) 2018 Aman LaChapelle
@@ -20,30 +20,37 @@
     limitations under the License.
  */
 
-
-#ifndef TYR_FINDPURE_HPP
-#define TYR_FINDPURE_HPP
-
-
-#include <string>
+#include <functional>
 #include <map>
+#include <string>
 
-namespace llvm {
-  class Function;
+void do_some_stuff(const char *string, std::string string2) {
+  string2 += std::string(string);
+  // do some init
+  return;
 }
 
-namespace tyr {
-  namespace compile {
-    class PureFinder {
+int func1(int x) {
+  return x + 1;
+}
 
-      void AddFunctionIfPure(llvm::Function *f);
+int func2(int y) {
+  return y + 2;
+}
 
-    private:
-      // map call context (route) to function
-      std::map<std::string, llvm::Function *> m_found_;
-    };
+int func3(int z) {
+  return z + 3;
+}
+
+int main(int argc, char *argv[]) {
+  do_some_stuff("hello", "world");
+  switch (std::atoi(argv[1])) {
+    case 1:
+      func1(std::atoi(argv[2])); break;
+    case 2:
+      func2(std::atoi(argv[2])); break;
+    case 3:
+      func3(std::atoi(argv[2])); break;
   }
 }
 
-
-#endif //TYR_FINDPURE_HPP

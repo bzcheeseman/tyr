@@ -12,6 +12,10 @@ set(ALL_CXX_SOURCE_FILES "")
 
 include(FindLLVM)
 
+enable_testing()
+add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} -V)
+include(AddGTest)
+
 add_subdirectory(src/compiler)
 add_subdirectory(src/runtime)
 

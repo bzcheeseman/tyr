@@ -1,5 +1,5 @@
 //
-// Created by Aman LaChapelle on 7/16/18.
+// Created by Aman LaChapelle on 7/20/18.
 //
 // tyr
 // Copyright (c) 2018 Aman LaChapelle
@@ -20,19 +20,17 @@
     limitations under the License.
  */
 
+#include <gtest/gtest.h>
+#include <Loader.hpp>
 
-#include "PureFinder.hpp"
+namespace {
+  using namespace tyr::compiler;
 
-#include <llvm/IR/Module.h>
-#include <llvm/IR/Attributes.h>
-#include <llvm/Support/raw_ostream.h>
+  TEST(Loader, from_file) {
+    llvm::LLVMContext ctx;
+    Loader loader {ctx};
 
-void tyr::compile::PureFinder::AddFunctionIfPure(llvm::Function *f) {
-  if (!f->hasFnAttribute(llvm::Attribute::AttrKind::ReadOnly) && !f->hasFnAttribute(llvm::Attribute::AttrKind::ReadNone)) {
-    return;
+    EXPECT_NO_THROW(std::unique_ptr<llvm::Module> module = loader.LoadModule("example.ll"));
   }
-
-  // find the call context
-  llvm::Use *call_site = &(*f->uses().end());
-  call_site->getUser()->getName();
 }
+

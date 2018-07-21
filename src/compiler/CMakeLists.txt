@@ -18,4 +18,4 @@ target_include_directories(tyr-compile
         PUBLIC ${LLVM_INCLUDE_DIRS}
 )
 
-add_pass(FindMarkedFunctions ${CMAKE_CURRENT_SOURCE_DIR}/passes/FindMarkedFunctions.cpp)
+add_gtest(Loader tyr-compile)

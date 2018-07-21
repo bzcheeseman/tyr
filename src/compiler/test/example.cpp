@@ -24,15 +24,6 @@
 #include <map>
 #include <string>
 
-#include "../src/compiler/include/Register.hpp"
-
-template<typename T>
-struct tyr_retval {
-  tyr_retval(T value): value(value) {}
-
-  T value;
-};
-
 void do_some_stuff(const char *string, std::string string2) {
   string2 += std::string(string);
   // do some init
@@ -51,11 +42,15 @@ int func3(int z) {
   return z + 3;
 }
 
-void route() {
-  mark_tyr_function();
+int main(int argc, char *argv[]) {
   do_some_stuff("hello", "world");
-  set_tyr_route("one", func1);
-  set_tyr_route("two", func2);
-  set_tyr_route("three", func3);
+  switch (std::atoi(argv[1])) {
+    case 1:
+      func1(std::atoi(argv[2])); break;
+    case 2:
+      func2(std::atoi(argv[2])); break;
+    case 3:
+      func3(std::atoi(argv[2])); break;
+  }
 }
 

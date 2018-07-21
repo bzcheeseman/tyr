@@ -1,5 +1,5 @@
 //
-// Created by Aman LaChapelle on 7/17/18.
+// Created by Aman LaChapelle on 7/20/18.
 //
 // tyr
 // Copyright (c) 2018 Aman LaChapelle
@@ -10,9 +10,9 @@
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
     You may obtain a copy of the License at
-    
+
         http://www.apache.org/licenses/LICENSE-2.0
-    
+
     Unless required by applicable law or agreed to in writing, software
     distributed under the License is distributed on an "AS IS" BASIS,
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,19 +20,34 @@
     limitations under the License.
  */
 
+#ifndef TYR_ROUTEFINDER_HPP
+#define TYR_ROUTEFINDER_HPP
 
-#ifndef TYR_REGISTER_HPP
-#define TYR_REGISTER_HPP
+#include <string>
+#include <map>
 
-extern "C" void mark_tyr_function() {
-  return;
-}
+namespace llvm {
+class Module;
+class Instruction;
+class Function;
+} // namespace llvm
 
-template<typename RouteType, typename FunctionType,
-         typename = std::enable_if_t<std::is_function<typename std::remove_pointer<FunctionType>::type>::value>>
-void set_tyr_route(RouteType route, FunctionType fn) {
-  mark_tyr_function();
-  return; // doesn't have to do anything, we're just looking at the functions themselves
-}
+namespace tyr {
+namespace compiler {
 
-#endif //TYR_REGISTER_HPP
+class RouteFinder {
+public:
+  explicit RouteFinder(llvm::Module *module);
+
+private:
+  // generate routing table from main (what is the route? is it a string? do we assert that it's a string?)
+  std::map<std::string, llvm::Function *> GenerateRouteTable_();
+
+private:
+  llvm::Module *m_module_;
+
+};
+} // namespace compiler
+} // namespace tyr
+
+#endif // TYR_ROUTEFINDER_HPP

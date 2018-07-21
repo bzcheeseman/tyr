@@ -1,5 +1,5 @@
 //
-// Created by Aman LaChapelle on 7/14/18.
+// Created by Aman LaChapelle on 7/20/18.
 //
 // tyr
 // Copyright (c) 2018 Aman LaChapelle
@@ -20,34 +20,16 @@
     limitations under the License.
  */
 
-#ifndef TYR_LOADER_HPP
-#define TYR_LOADER_HPP
+#include "RouteFinder.hpp"
 
-#include <llvm/IR/Module.h>
-#include <llvm/Support/MemoryBuffer.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Instruction.h>
 
-namespace llvm {
-class LLVMContext;
+tyr::compiler::RouteFinder::RouteFinder(llvm::Module *module)
+    : m_module_(module) {}
+
+std::map<std::string, llvm::Function *> tyr::compiler::RouteFinder::GenerateRouteTable_() {
+  std::map<std::string, llvm::Function *> table;
+
+
 }
-
-namespace tyr {
-namespace compiler {
-class Loader {
-public:
-  explicit Loader(llvm::LLVMContext &ctx);
-
-  std::unique_ptr<llvm::Module> LoadModule(const std::string &filename);
-
-  std::unique_ptr<llvm::Module>
-  LoadModule(llvm::MemoryBufferRef serialized_module);
-
-private:
-  void ResetDataLayout(llvm::Module *module);
-
-private:
-  llvm::LLVMContext &m_ctx_;
-};
-} // namespace compiler
-} // namespace tyr
-
-#endif // TYR_LOADER_HPP

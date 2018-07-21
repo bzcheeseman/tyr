@@ -33,7 +33,12 @@
 
 namespace tyr {
 namespace compiler {
-Loader::Loader(llvm::LLVMContext &ctx) : m_ctx_(ctx) {}
+Loader::Loader(llvm::LLVMContext &ctx) : m_ctx_(ctx) {
+  llvm::InitializeAllTargets();
+  llvm::InitializeAllTargetMCs();
+  llvm::InitializeAllAsmPrinters();
+  llvm::InitializeAllAsmParsers();
+}
 
 std::unique_ptr<llvm::Module> Loader::LoadModule(const std::string &filename) {
   llvm::SMDiagnostic smd_err;
@@ -46,6 +51,10 @@ std::unique_ptr<llvm::Module> Loader::LoadModule(const std::string &filename) {
   }
 
   this->ResetDataLayout(module.get());
+
+  bool main_found = (module->getFunction("main") != nullptr);
+  if (!main_found)
+    throw std::runtime_error("no symbol 'main' in module");
 
   return module;
 }
@@ -62,6 +71,10 @@ Loader::LoadModule(llvm::MemoryBufferRef serialized_module) {
   }
 
   this->ResetDataLayout(module.get());
+
+  bool main_found = (module->getFunction("main") != nullptr);
+  if (!main_found)
+    throw std::runtime_error("no symbol 'main' in module");
 
   return module;
 }
