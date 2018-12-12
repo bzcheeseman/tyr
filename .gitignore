@@ -3,3 +3,16 @@ build/
 .idea/
 *.ll
 *.dot
+
+example/
+scripts/
+
+test/**/*.bc
+test/**/*.o
+test/**/*.so
+test/**/*.h
+test/**/*.out
+test/**/path.py
+test/**/*.tsf
+
+venv/

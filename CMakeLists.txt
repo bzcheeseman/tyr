@@ -1,22 +1,39 @@
 cmake_minimum_required(VERSION 3.10)
 project(tyr)
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+# Version
+set (tyr_VERSION_MAJOR 0)
+set (tyr_VERSION_MINOR 1)
+set (tyr_VERSION_PATCH 0)
 
+# CMake compiler setup
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
-
 set(CMAKE_CXX_STANDARD 11)
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
+set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
-set(ALL_CXX_SOURCE_FILES "")
-
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(FindLLVM)
 
-enable_testing()
-add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} -V)
-include(AddGTest)
+# Setup for clang-format
+set(ALL_CXX_SOURCE_FILES "")
 
-add_subdirectory(src/compiler)
-add_subdirectory(src/runtime)
+# Add the subdirectories
+add_subdirectory(lib/compiler)
+add_subdirectory(lib/tools)
+
+# Install configuration
+install(TARGETS tyr
+            CONFIGURATIONS Release
+            RUNTIME DESTINATION bin)
+
+option(BUILD_TESTS "Build the tests" ON)
+
+if (BUILD_TESTS)
+    enable_testing()
+    add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} -V)
+    include(AddGTest)
+
+    add_subdirectory(lib/test)
+endif(BUILD_TESTS)
 
 include(FindClangFormat)

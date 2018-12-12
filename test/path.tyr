@@ -1,0 +1,21 @@
+struct path {
+  mutable repeated float x
+  mutable repeated float y
+  int32 idx
+}
+
+struct node {
+  int16 id
+  int64 data
+}
+
+struct edge {
+  int16 src
+  int16 sink
+}
+
+struct graph {
+  mutable repeated node
+  mutable repeated edge
+}
+

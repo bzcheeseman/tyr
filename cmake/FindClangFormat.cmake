@@ -7,7 +7,7 @@ if (NOT __ADD_CLANG_FORMAT_INCLUDED)
                 clang-format
                 COMMAND ${CLANG_FORMAT}
                 -i
-                -style=file
+                -style=llvm
                 ${ALL_CXX_SOURCE_FILES}
 
         )

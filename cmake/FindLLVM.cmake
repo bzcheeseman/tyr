@@ -1,7 +1,7 @@
 if (NOT __ADD_LLVM_INCLUDED)
     set(__ADD_LLVM_INCLUDED TRUE)
 
-    find_package(LLVM 6.0 REQUIRED CONFIG)
+    find_package(LLVM 7.0 REQUIRED CONFIG)
 
     list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
     include(AddLLVM)
@@ -10,6 +10,7 @@ if (NOT __ADD_LLVM_INCLUDED)
     message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
     add_definitions(${LLVM_DEFINITIONS})
+    link_directories(${LLVM_LIBRARY_DIR})
 
     function(add_pass name)
         add_library(${name}Pass MODULE
