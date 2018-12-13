@@ -103,13 +103,12 @@ bool tyr::CodeGen::addField(const std::string &StructName, bool IsMutable,
       .addField(std::move(FieldName), FT, IsMutable);
 }
 
-void tyr::CodeGen::finalizeStruct(const std::string &StructName) {
+bool tyr::CodeGen::finalizeStruct(const std::string &StructName) {
   m_module_structs_.at(StructName).finalizeFields(m_parent_.get());
-  m_module_structs_.at(StructName).populateModule(m_parent_.get());
+  return m_module_structs_.at(StructName).populateModule(m_parent_.get());
 }
 
-bool tyr::CodeGen::emitStructForUse(UseLang bind, bool EmitLLVM,
-                                    const std::string &OutputDir) {
+bool tyr::CodeGen::emitStructForUse(UseLang bind, bool EmitLLVM, bool EmitText, const std::string &OutputDir) {
   bool retval = true;
 
   std::string moduleName = m_parent_->getName();
@@ -117,11 +116,21 @@ bool tyr::CodeGen::emitStructForUse(UseLang bind, bool EmitLLVM,
   llvm::SmallVector<char, 35> path{OutputDir.begin(), OutputDir.end()};
 
   if (EmitLLVM) {
-    llvm::sys::path::append(path, moduleName + ".bc");
-    retval &= emitLLVM(path.data());
+    if (EmitText) {
+      llvm::sys::path::append(path, moduleName + ".ll");
+    } else {
+      llvm::sys::path::append(path, moduleName + ".bc");
+    }
+
+    retval &= emitLLVM(path.data(), EmitText);
   } else {
     llvm::sys::path::append(path, moduleName + ".o");
     retval &= emitObjectCode(path.data());
+  }
+
+  if (!retval) {
+    llvm::errs() << "Code generation failed, aborting\n";
+    return false;
   }
 
   std::string extension{};
@@ -141,10 +150,15 @@ bool tyr::CodeGen::emitStructForUse(UseLang bind, bool EmitLLVM,
 
   retval &= emitBindings(std::string(path.begin(), path.end()), bind);
 
+  if (!retval) {
+    llvm::errs() << "Binding generation failed, aborting\n";
+    return false;
+  }
+
   return retval;
 }
 
-bool tyr::CodeGen::emitLLVM(const std::string &filename) {
+bool tyr::CodeGen::emitLLVM(const std::string &filename, bool EmitText) {
   std::error_code EC;
   llvm::raw_fd_ostream dest(filename, EC, llvm::sys::fs::F_None);
 
@@ -167,8 +181,12 @@ bool tyr::CodeGen::emitLLVM(const std::string &filename) {
     return false;
   }
 
-//  m_parent_->print(dest, nullptr);
-  llvm::WriteBitcodeToFile(*m_parent_, dest);
+  if (EmitText) {
+    m_parent_->print(dest, nullptr);
+  } else {
+    llvm::WriteBitcodeToFile(*m_parent_, dest);
+  }
+
   dest.flush();
   return true;
 }

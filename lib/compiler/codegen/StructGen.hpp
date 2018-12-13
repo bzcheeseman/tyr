@@ -93,7 +93,7 @@ public:
   StructGen(std::string Name, bool IsPacked);
 
   bool addField(std::string Name, llvm::Type *FieldType, bool IsMutable);
-  void populateModule(llvm::Module *Parent);
+  bool populateModule(llvm::Module *Parent);
   void finalizeFields(llvm::Module *Parent);
   llvm::Type *getStructType() const;
 

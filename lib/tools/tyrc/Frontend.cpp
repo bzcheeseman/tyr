@@ -69,9 +69,14 @@ cl::opt<std::string> Features(
     cl::desc("Use +feature to enable a feature, or -feature to disable"),
     cl::init(""));
 
-// TODO: should emit text too?
 cl::opt<bool> EmitLLVM("emit-llvm", cl::desc("Emit LLVM bytecode"),
                        cl::init(false));
+
+cl::opt<bool> EmitText("emit-text", cl::desc("Emit LLVM IR as text. Ignored if not used with emit-llvm."), cl::init(false));
+
+const int COULD_NOT_OPEN_FILE = -1;
+const int PARSING_FAILED = -2;
+const int CODEGEN_FAILED = -3;
 
 } // namespace
 
@@ -103,19 +108,22 @@ int main(int argc, char *argv[]) {
   std::ifstream in_file{FN};
   if (!in_file.is_open()) {
     llvm::errs() << "Could not open file " << FN << "\n";
-    return 1;
+    return COULD_NOT_OPEN_FILE;
   }
 
   // parse the file
   tyr::Parser parser{generator};
   if (!parser.parseFile(in_file)) {
     llvm::errs() << "Error occurred parsing file " << FN << "\n";
-    return 1;
+    return PARSING_FAILED;
   }
 
   // emit the struct code
-  generator.emitStructForUse(BindLang.getValue(), EmitLLVM.getValue(),
-                             OutputDir.getValue());
+  if (!generator.emitStructForUse(BindLang.getValue(), EmitLLVM.getValue(), EmitText.getValue(),
+                                  OutputDir.getValue())) {
+    llvm::errs() << "Error occurred emitting struct for use\n";
+    return CODEGEN_FAILED;
+  }
 
   // should I compile into .so?
   bool ShouldCompileToDylib = (BindLang.getValue() == tyr::kUseLangPython);

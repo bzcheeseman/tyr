@@ -760,18 +760,43 @@ bool tyr::StructGen::getDeserializer(llvm::Module *Parent) {
 
   builder.CreateRet(StructOut);
 
-  return false;
+  return true;
 }
 
-void tyr::StructGen::populateModule(llvm::Module *Parent) {
-  getConstructor(Parent);
-  for (auto &entry : m_elements_) {
-    entry->getGetter(Parent);
-    entry->getSetter(Parent);
-    entry->getSerializer(Parent);
-    entry->getDeserializer(Parent);
+bool tyr::StructGen::populateModule(llvm::Module *Parent) {
+  if (!getConstructor(Parent)) {
+    llvm::errs() << "Get constructor failed for struct " << m_type_->getName() << " aborting\n";
+    return false;
   }
-  getSerializer(Parent);
-  getDeserializer(Parent);
-  getDestructor(Parent);
+  for (auto &entry : m_elements_) {
+    if (!entry->getGetter(Parent)) {
+      llvm::errs() << "Get getter failed for struct " << m_type_->getName() << " aborting\n";
+      return false;
+    }
+    if (!entry->getSetter(Parent)) {
+      llvm::errs() << "Get setter failed for struct " << m_type_->getName() << " aborting\n";
+      return false;
+    }
+    if (!entry->getSerializer(Parent)) {
+      llvm::errs() << "Get field serializer failed for struct " << m_type_->getName() << " aborting\n";
+      return false;
+    }
+    if (!entry->getDeserializer(Parent)) {
+      llvm::errs() << "Get field deserializer failed for struct " << m_type_->getName() << " aborting\n";
+      return false;
+    }
+  }
+  if (!getSerializer(Parent)) {
+    llvm::errs() << "Get serializer failed for struct " << m_type_->getName() << " aborting\n";
+    return false;
+  }
+  if (!getDeserializer(Parent)) {
+    llvm::errs() << "Get deserializer failed for struct " << m_type_->getName() << " aborting\n";
+    return false;
+  }
+  if (!getDestructor(Parent)) {
+    llvm::errs() << "Get destructor failed for struct " << m_type_->getName() << " aborting\n";
+    return false;
+  }
+  return true;
 }

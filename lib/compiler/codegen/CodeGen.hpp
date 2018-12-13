@@ -50,18 +50,17 @@ public:
   // struct something {
   bool newStruct(const std::string &Name, bool IsPacked);
 
-  // mutable repeated int8 bytes;
+  // mutable repeated int8 bytes
   bool addField(const std::string &StructName, bool IsMutable, bool IsRepeated,
                 std::string FieldType, std::string FieldName);
 
-  // };
-  void finalizeStruct(const std::string &StructName);
+  // }
+  bool finalizeStruct(const std::string &StructName);
 
-  bool emitStructForUse(UseLang bind, bool EmitLLVM,
-                        const std::string &OutputDir);
+  bool emitStructForUse(UseLang bind, bool EmitLLVM, bool EmitText, const std::string &OutputDir);
 
 private:
-  bool emitLLVM(const std::string &filename);
+  bool emitLLVM(const std::string &filename, bool EmitText);
   bool emitObjectCode(const std::string &filename);
   bool emitBindings(const std::string &filename, UseLang bind);
 

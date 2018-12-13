@@ -56,7 +56,10 @@ bool tyr::Parser::parseLine(std::istringstream &input) {
   }
 
   if (tokens[0] == "}") {
-    m_generator_.finalizeStruct(m_current_struct_);
+    if (!m_generator_.finalizeStruct(m_current_struct_)) {
+      llvm::errs() << "Finalization for the struct failed\n";
+      return false;
+    }
     m_current_struct_.clear();
     return true;
   }

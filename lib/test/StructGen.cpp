@@ -96,6 +96,7 @@ TEST(StructGen, code_correct) {
   llvm::InitializeAllTargetMCs();
   llvm::InitializeAllAsmPrinters();
   llvm::InitializeAllAsmParsers();
+  llvm::InitializeNativeTarget();
 
   Parent->setTargetTriple(llvm::sys::getDefaultTargetTriple());
 
