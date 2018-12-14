@@ -25,7 +25,8 @@
 
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/Support/raw_ostream.h>
-#include <ostream>
+
+#include <set>
 
 namespace llvm {
 class Module;
@@ -66,7 +67,6 @@ private:
 };
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const Binding &b);
-std::ostream &operator<<(std::ostream &os, const Binding &b);
 } // namespace tyr
 
 #endif // TYR_BINDGENIMPL_HPP

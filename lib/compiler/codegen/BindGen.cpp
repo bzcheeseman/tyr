@@ -49,11 +49,22 @@ std::string tyr::Binding::assembleBinding(bool funcsOnly) const {
 
   for (const auto &f : m_module_->functions()) {
     // Don't export anything internal (prefixed by "__")
-    if (f.isIntrinsic() || f.getName() == "malloc" ||
-        f.getName() == "realloc" || f.getName() == "free" ||
-        (f.getName()[0] == '_' && f.getName()[1] == '_')) {
+    if (f.getName().startswith("__")) {
       continue;
     }
+    // Don't export intrinsics
+    if (f.isIntrinsic()) {
+      continue;
+    }
+    // Don't export anything we don't define
+    if (f.isDeclaration()) {
+      continue;
+    }
+    // Don't export anything in the runtime (prefixed by "tyr_")
+    if (f.getName().startswith("tyr_")) {
+      continue;
+    }
+
     out += m_generator_->getFunctionProto(f);
   }
 
@@ -66,11 +77,6 @@ std::string tyr::Binding::assembleBinding(bool funcsOnly) const {
 
 llvm::raw_ostream &tyr::operator<<(llvm::raw_ostream &os,
                                    const tyr::Binding &b) {
-  os << b.assembleBinding();
-  return os;
-}
-
-std::ostream &tyr::operator<<(std::ostream &os, const tyr::Binding &b) {
   os << b.assembleBinding();
   return os;
 }

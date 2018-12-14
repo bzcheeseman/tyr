@@ -1,8 +1,8 @@
 from path import *
 
 
-def check_serialized(serialized: List[int], serialized_size: int) -> bool:
-    deserialized = deserialize_path(serialized, serialized_size)
+def check_serialized(serialized: List[int]) -> bool:
+    deserialized = deserialize_path(serialized)
 
     idx = get_path_idx(deserialized)
     assert idx[0] and idx[1] == 5
@@ -23,7 +23,6 @@ if __name__ == "__main__":
     with open("serialized_path.tsf", "rb") as f:
         serialized = f.read()
 
-    serialized_size = len(serialized)
     # just make sure you can deserialize and the counts are correct
-    assert check_serialized(serialized, serialized_size)
+    assert check_serialized(serialized)
     print("Test succeeded")

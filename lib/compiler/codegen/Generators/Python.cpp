@@ -27,6 +27,11 @@
 void tyr::Python::setupOpaqueTypes(
     llvm::ArrayRef<llvm::StructType *> StructTys) {
   for (auto &ty : StructTys) {
+    // It's something like a file pointer or something
+    if (ty->getName().startswith("struct.")) {
+      continue;
+    }
+
     std::string TyName = ty->getName();
 
     for (int i = 0; i < TyName.size() - 1; ++i) {
@@ -62,19 +67,24 @@ std::string tyr::Python::getFunctionProto(const llvm::Function &f) {
   rso << "def " << f.getName() << "(";
   uint32_t i = 0;
   if (!Args.empty()) {
-    for (auto arg_iter = Args.begin(), end = --Args.end(); arg_iter != end;
-         ++arg_iter) {
-      if (!(*arg_iter)->isPointerTy() || !HasInout ||
-          arg_iter == Args.begin()) {
-        rso << "in" << i << ": ";
-        rso << convertType(*arg_iter);
-        rso << ", ";
-        ++i;
+    if (Args.size() == 1) {
+      rso << "in0";
+    } else {
+      for (auto arg_iter = Args.begin(), end = --Args.end(); arg_iter != end;
+           ++arg_iter) {
+        if (!(*arg_iter)->isPointerTy() || !HasInout ||
+            arg_iter == Args.begin()) {
+          rso << "in" << i << ": ";
+          rso << convertType(*arg_iter);
+          rso << ", ";
+          ++i;
+        }
       }
-    }
-    if (!(*Args.rbegin())->isPointerTy() || !HasInout) {
-      rso << "in" << i << ": ";
-      rso << convertType(*Args.rbegin());
+
+      if (!(*Args.rbegin())->isPointerTy() || !HasInout) {
+        rso << "in" << i << ": ";
+        rso << convertType(*Args.rbegin());
+      }
     }
   }
   rso << "):\n";

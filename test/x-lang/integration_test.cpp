@@ -22,13 +22,15 @@
 
 #include "path.h"
 
+#include "FileHelper.h"
+
 #include <vector>
 #include <random>
 #include <numeric>
 #include <iostream>
 #include <fstream>
 
-uint8_t *get_serialized_storage(std::vector<float> &x, std::vector<float> &y, uint64_t *len) {
+uint8_t *get_serialized_storage(std::vector<float> &x, std::vector<float> &y) {
   path_ptr data = create_path(5);
 
   std::random_device rd;
@@ -42,13 +44,16 @@ uint8_t *get_serialized_storage(std::vector<float> &x, std::vector<float> &y, ui
 
   set_path_x(data, x.data(), x.size());
   set_path_y(data, y.data(), y.size());
-  uint8_t *out = serialize_path(data, len);
+
+  tyr_serialize_to_file("serialized_path.tsf", &serialize_path, data);
+
+  uint8_t *out = serialize_path(data);
   destroy_path(data);
   return out;
 }
 
-bool check_serialized(uint8_t *serialized, uint64_t len, const std::vector<float> &x, const std::vector<float> &y) {
-  path_ptr deserialized = deserialize_path(serialized, len);
+bool check_serialized(uint8_t *serialized, const std::vector<float> &x, const std::vector<float> &y) {
+  path_ptr deserialized = deserialize_path(serialized);
   free(serialized);
 
   uint32_t idx = 0;
@@ -79,16 +84,12 @@ bool check_serialized(uint8_t *serialized, uint64_t len, const std::vector<float
 
 int main() {
 
-  uint64_t serialized_len = 0;
   std::vector<float> x, y;
-  uint8_t *serialized = get_serialized_storage(x, y, &serialized_len);
-  std::ofstream out_file("serialized_path.tsf", std::ios::binary);
-  if (out_file.is_open()) {
-    out_file << std::string(serialized, serialized + serialized_len);
-  }
-  out_file.close();
+  uint8_t *serialized = get_serialized_storage(x, y);
+  // TODO: we should NOT have to know this as a user of the lib...
+  uint64_t serialized_len = *((uint64_t *)serialized);
 
-  assert(check_serialized(serialized, serialized_len, x, y));
+  assert(check_serialized(serialized, x, y));
   
   return 0;
 

@@ -20,9 +20,10 @@ path.bc: find_tyrc
 	$(TYRC) path.tyr -emit-llvm -bind-lang=c -out-dir=./x-lang
 
 test.out: path.bc
-	clang++ -O1 $(LDFLAGS) $(CPPFLAGS) -flto ./c/path.bc ./c/integration_test.cpp -o ./c/test.out
+	clang++ -O3 $(LDFLAGS) $(CPPFLAGS) -flto ./c/path.bc ./c/integration_test.cpp -o ./c/test.out
 
 test_c: test.out
+	@echo Starting test
 	./c/test.out
 
 path.py: find_tyrc
@@ -30,9 +31,11 @@ path.py: find_tyrc
 	$(TYRC) path.tyr -bind-lang=python -out-dir=./x-lang
 
 test_python: path.py
+	@echo Starting test
 	../venv/bin/python ./python/integration_test.py
 
 test_x_lang: path.bc path.py
-	clang++ -O1 $(LDFLAGS) $(CPPFLAGS) -flto ./x-lang/path.bc ./x-lang/integration_test.cpp -o ./x-lang/test.out
+	clang++ -O3 $(LDFLAGS) $(CPPFLAGS) -flto ./x-lang/path.bc ./x-lang/integration_test.cpp -o ./x-lang/test.out
+	@echo Starting test
 	./x-lang/test.out
 	../venv/bin/python ./x-lang/integration_test.py

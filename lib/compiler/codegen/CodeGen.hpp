@@ -59,6 +59,8 @@ public:
 
   bool emitStructForUse(UseLang bind, bool EmitLLVM, bool EmitText, const std::string &OutputDir);
 
+  bool linkOutsideModule(const std::string &filename);
+
 private:
   bool emitLLVM(const std::string &filename, bool EmitText);
   bool emitObjectCode(const std::string &filename);

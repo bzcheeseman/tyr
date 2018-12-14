@@ -29,6 +29,10 @@
 
 namespace {
 
+#ifndef TYR_RT_BITCODE_FILE
+#error "Need the tyr runtime lib file"
+#endif
+
 using namespace llvm;
 
 cl::OptionCategory
@@ -77,6 +81,7 @@ cl::opt<bool> EmitText("emit-text", cl::desc("Emit LLVM IR as text. Ignored if n
 const int COULD_NOT_OPEN_FILE = -1;
 const int PARSING_FAILED = -2;
 const int CODEGEN_FAILED = -3;
+const int RT_LINKING_FAILED = -4;
 
 } // namespace
 
@@ -107,7 +112,7 @@ int main(int argc, char *argv[]) {
   // read the file
   std::ifstream in_file{FN};
   if (!in_file.is_open()) {
-    llvm::errs() << "Could not open file " << FN << "\n";
+    llvm::errs() << "Could not open file " << FN << " for input\n";
     return COULD_NOT_OPEN_FILE;
   }
 
@@ -116,6 +121,12 @@ int main(int argc, char *argv[]) {
   if (!parser.parseFile(in_file)) {
     llvm::errs() << "Error occurred parsing file " << FN << "\n";
     return PARSING_FAILED;
+  }
+
+  // Link the runtime
+  if (!generator.linkOutsideModule(TYR_RT_BITCODE_FILE)) {
+    llvm::errs() << "Error ocurred linking the runtime\n";
+    return RT_LINKING_FAILED;
   }
 
   // emit the struct code

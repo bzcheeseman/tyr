@@ -26,6 +26,11 @@
 
 void tyr::C::setupOpaqueTypes(llvm::ArrayRef<llvm::StructType *> StructTys) {
   for (const auto &s : StructTys) {
+    // It's something like a file pointer or something
+    if (s->getName().startswith("struct.")) {
+      continue;
+    }
+
     std::string struct_typename = s->getName();
     struct_typename += "_ptr";
 

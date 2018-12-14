@@ -27,7 +27,7 @@
 #include <numeric>
 #include <iostream>
 
-uint8_t *get_serialized_storage(std::vector<float> &x, std::vector<float> &y, uint64_t *len) {
+uint8_t *get_serialized_storage(std::vector<float> &x, std::vector<float> &y) {
   path_ptr data = create_path(5);
 
   std::random_device rd;
@@ -43,13 +43,13 @@ uint8_t *get_serialized_storage(std::vector<float> &x, std::vector<float> &y, ui
 
   set_path_x(data, x.data(), x.size());
   set_path_y(data, y.data(), y.size());
-  uint8_t *out = serialize_path(data, len);
+  uint8_t *out = serialize_path(data);
   destroy_path(data);
   return out;
 }
 
-bool check_serialized(uint8_t *serialized, uint64_t len, const std::vector<float> &x, const std::vector<float> &y) {
-  path_ptr deserialized = deserialize_path(serialized, len);
+bool check_serialized(uint8_t *serialized, const std::vector<float> &x, const std::vector<float> &y) {
+  path_ptr deserialized = deserialize_path(serialized);
   free(serialized);
 
   uint32_t idx = 0;
@@ -113,12 +113,11 @@ bool check_graph() {
     assert(id == i);
   }
 
-  uint64_t serialized_size = 0;
-  uint8_t *serialized = serialize_graph(g, &serialized_size);
+  uint8_t *serialized = serialize_graph(g);
   destroy_graph(g);
 
   // Now deserialize the thing
-  graph_ptr deserialized = deserialize_graph(serialized, serialized_size);
+  graph_ptr deserialized = deserialize_graph(serialized);
   free(serialized);
 
   out_edges = nullptr;
@@ -147,11 +146,9 @@ bool check_graph() {
 }
 
 int main() {
-
-  uint64_t serialized_len = 0;
   std::vector<float> x, y;
-  uint8_t *serialized = get_serialized_storage(x, y, &serialized_len);
-  assert(check_serialized(serialized, serialized_len, x, y));
+  uint8_t *serialized = get_serialized_storage(x, y);
+  assert(check_serialized(serialized, x, y));
 
   assert(check_graph());
   

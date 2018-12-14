@@ -60,7 +60,7 @@ TEST(StructGen, verif_correct) {
                               llvm::Type::getInt8PtrTy(ctx));
 
   sg.populateModule(Parent.get());
-  //  Parent->print(llvm::outs(), nullptr);
+  Parent->print(llvm::outs(), nullptr);
   EXPECT_FALSE(llvm::verifyModule(*Parent, &llvm::errs()));
 }
 
@@ -154,11 +154,10 @@ TEST(StructGen, code_correct) {
   auto destructor =
       (void (*)(void *))engine->getFunctionAddress("destroy_test");
 
-  auto serializer = (uint8_t * (*)(void *, uint64_t *))
-                        engine->getFunctionAddress("serialize_test");
+  auto serializer =
+      (uint8_t * (*)(void *)) engine->getFunctionAddress("serialize_test");
   auto deserializer =
-      (void *(*)(uint8_t *, uint64_t))engine->getFunctionAddress(
-          "deserialize_test");
+      (void *(*)(uint8_t *))engine->getFunctionAddress("deserialize_test");
 
   uint32_t *test_data = (uint32_t *)calloc(35, sizeof(uint32_t));
   for (int i = 0; i < 35; ++i) {
@@ -185,10 +184,9 @@ TEST(StructGen, code_correct) {
     EXPECT_EQ(test_data[i], test_out_data[i]);
   }
 
-  uint64_t serialized_size = 0;
-  uint8_t *serialized = serializer(test_struct, &serialized_size);
+  uint8_t *serialized = serializer(test_struct);
 
-  void *deserialized_struct = deserializer(serialized, serialized_size);
+  void *deserialized_struct = deserializer(serialized);
   EXPECT_TRUE(deserialized_struct != nullptr);
 
   uint32_t *deserialized_data = nullptr;

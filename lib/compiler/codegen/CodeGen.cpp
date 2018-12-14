@@ -31,9 +31,10 @@
 #include "Generators/Python.hpp"
 
 #include <llvm/Bitcode/BitcodeWriter.h>
+#include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Verifier.h>
-#include <llvm/Support/FileSystem.h>
+#include <llvm/Linker/Linker.h>
 #include <llvm/Support/Path.h>
 #include <llvm/Support/TargetRegistry.h>
 #include <llvm/Support/TargetSelect.h>
@@ -122,7 +123,7 @@ bool tyr::CodeGen::emitStructForUse(UseLang bind, bool EmitLLVM, bool EmitText, 
       llvm::sys::path::append(path, moduleName + ".bc");
     }
 
-    retval &= emitLLVM(path.data(), EmitText);
+    retval &= emitLLVM(std::string(path.begin(), path.end()), EmitText);
   } else {
     llvm::sys::path::append(path, moduleName + ".o");
     retval &= emitObjectCode(path.data());
@@ -163,7 +164,7 @@ bool tyr::CodeGen::emitLLVM(const std::string &filename, bool EmitText) {
   llvm::raw_fd_ostream dest(filename, EC, llvm::sys::fs::F_None);
 
   if (EC) {
-    llvm::errs() << "Could not open file: " << EC.message();
+    llvm::errs() << "Could not open file to emit LLVM bitcode: " << EC.message() << "\n";
     return false;
   }
 
@@ -196,7 +197,7 @@ bool tyr::CodeGen::emitObjectCode(const std::string &filename) {
   llvm::raw_fd_ostream dest(filename, EC, llvm::sys::fs::F_None);
 
   if (EC) {
-    llvm::errs() << "Could not open file: " << EC.message();
+    llvm::errs() << "Could not open file to emit object code: " << EC.message() << "\n";
     return false;
   }
 
@@ -261,7 +262,7 @@ bool tyr::CodeGen::emitBindings(const std::string &filename,
   llvm::raw_fd_ostream dest(filename, EC, llvm::sys::fs::F_None);
 
   if (EC) {
-    llvm::errs() << "Could not open file: " << EC.message();
+    llvm::errs() << "Could not open file to emit bindings: " << EC.message() << "\n";
     return false;
   }
 
@@ -300,4 +301,30 @@ llvm::Type *tyr::CodeGen::parseType(std::string FieldType, bool IsRepeated) {
   }
 
   return OutTy;
+}
+
+bool tyr::CodeGen::linkOutsideModule(const std::string &filename) {
+  auto FileBuf = llvm::MemoryBuffer::getFile(filename);
+  if (std::error_code ec = FileBuf.getError()) {
+    llvm::errs() << "Error getting file " << filename << ": " << ec.message() << "\n";
+    return false;
+  }
+
+  auto ExpOutsideModule = llvm::parseBitcodeFile(*FileBuf.get(), m_ctx_);
+  if (!ExpOutsideModule) {
+    llvm::errs() << "Error parsing bitcode file " << filename << "\n";
+    return false;
+  }
+
+  ExpOutsideModule.get()->setTargetTriple(m_parent_->getTargetTriple());
+  ExpOutsideModule.get()->setDataLayout(m_parent_->getDataLayout());
+  ExpOutsideModule.get()->setPICLevel(m_parent_->getPICLevel());
+
+  bool LinkFailed = llvm::Linker::linkModules(*m_parent_, std::move(ExpOutsideModule.get()));
+  if (LinkFailed) {
+    llvm::errs() << "Linking modules failed for input file " << filename << " and this module may be unstable\n";
+    return false;
+  }
+
+  return true;
 }

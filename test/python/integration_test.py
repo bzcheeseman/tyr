@@ -11,15 +11,15 @@ def get_serialized_storage() -> (List[int], int, np.ndarray):
     assert set_path_x(storage, list(x.tolist()), len(x))
     assert set_path_y(storage, list(y.tolist()), len(y))
 
-    serialized, serialized_size = serialize_path(storage)
+    serialized = serialize_path(storage)
 
     destroy_path(storage)
 
-    return serialized, serialized_size, x, y
+    return serialized, x, y
 
 
-def check_serialized(serialized: List[int], serialized_size: int, array_x: np.ndarray, array_y: np.ndarray) -> bool:
-    deserialized = deserialize_path(serialized, serialized_size)
+def check_serialized(serialized: List[int], array_x: np.ndarray, array_y: np.ndarray) -> bool:
+    deserialized = deserialize_path(serialized)
 
     idx = get_path_idx(deserialized)
     assert idx[0] and idx[1] == 5
@@ -42,6 +42,6 @@ def check_serialized(serialized: List[int], serialized_size: int, array_x: np.nd
 
 
 if __name__ == "__main__":
-    serialized, serialized_size, x, y = get_serialized_storage()
-    assert check_serialized(serialized, serialized_size, x, y)
+    serialized, x, y = get_serialized_storage()
+    assert check_serialized(serialized, x, y)
     print("Test succeeded")

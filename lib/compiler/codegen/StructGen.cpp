@@ -361,9 +361,25 @@ bool tyr::Field::getSerializer(llvm::Module *Parent) const {
   // Not null, we can continue
   builder.SetInsertPoint(IsNotNull);
 
+  // Get the field data
+  llvm::Value *FieldData =
+          builder.CreateLoad(builder.CreateStructGEP(Self, m_offset_));
+
   llvm::Value *CurrentPtr = builder.CreateGEP(OutBuf, builder.getInt64(0));
   llvm::Value *OutSize;
-  if (m_type_->isPointerTy()) {
+  if (m_type_->isPointerTy() && m_type_->getPointerElementType()->isStructTy()) {
+    // The serializer is just "serialize_<name>"
+    std::string FieldSerializerName = "serialize_" + std::string(m_type_->getStructName());
+    // Call it
+    llvm::Value *SerializedField = builder.CreateCall(Parent->getFunction(FieldSerializerName), {FieldData});
+    // Set the size of the thing (includes the size for the int header)
+    OutSize = builder.CreateLoad(builder.CreateBitCast(SerializedField, builder.getInt64Ty()->getPointerTo(0)));
+    // Copy the memory over
+    builder.CreateMemCpy(CurrentPtr, 0, SerializedField, 0, OutSize);
+    // Free the allocated buffer
+    builder.CreateCall(Parent->getFunction("free"), {SerializedField});
+  }
+  else if (m_type_->isPointerTy()) {
     // Get the count and store it first
     llvm::Value *Count = builder.CreateLoad(
         builder.CreateStructGEP(Self, m_count_field_->m_offset_));
@@ -376,17 +392,12 @@ bool tyr::Field::getSerializer(llvm::Module *Parent) const {
     // Increment CurrentPtr so we can store the data
     CurrentPtr = builder.CreateGEP(OutBuf, OutSize);
 
-    // Now store the data
-    llvm::Value *FieldData =
-        builder.CreateLoad(builder.CreateStructGEP(Self, m_offset_));
     llvm::Value *PtrFieldAllocSize = getFieldAllocSize(Self, builder);
     builder.CreateMemCpy(CurrentPtr, 0, FieldData, 0, PtrFieldAllocSize);
     // Increment the OutSize by the size of the pointer field
     OutSize = builder.CreateAdd(OutSize, PtrFieldAllocSize);
   } else {
     // Just store the data
-    llvm::Value *FieldData =
-        builder.CreateLoad(builder.CreateStructGEP(Self, m_offset_));
     OutSize = getFieldAllocSize(Self, builder);
     llvm::Value *CastedCurrentPtr =
         builder.CreateBitCast(CurrentPtr, m_type_->getPointerTo(0));
@@ -435,7 +446,17 @@ bool tyr::Field::getDeserializer(llvm::Module *Parent) const {
 
   llvm::Value *CurrentPtr = builder.CreateGEP(InBuf, builder.getInt64(0));
   llvm::Value *OutSize;
-  if (m_type_->isPointerTy()) {
+  if (m_type_->isPointerTy() && m_type_->getPointerElementType()->isStructTy()) {
+    // The serializer is just "deserialize_<name>"
+    std::string FieldDeserializerName = "deserialize_" + std::string(m_type_->getStructName());
+    // Call it
+    llvm::Value *Field = builder.CreateCall(Parent->getFunction(FieldDeserializerName), {CurrentPtr});
+    // Now we have it, so we can just store it
+    builder.CreateStore(Field, builder.CreateStructGEP(Self, m_offset_));
+    // Set the size of the thing
+    OutSize = builder.CreateLoad(builder.CreateBitCast(CurrentPtr, builder.getInt64Ty()->getPointerTo(0)));
+  }
+  else if (m_type_->isPointerTy()) {
     // Get the count first
     llvm::Value *CastedCurrentPtr = builder.CreateBitCast(
         CurrentPtr, m_count_field_->m_type_->getPointerTo(0));
@@ -643,7 +664,7 @@ bool tyr::StructGen::getSerializer(llvm::Module *Parent) {
   // constructor has parameters for all of the non-mutable fields
   llvm::FunctionType *SerializerType = llvm::FunctionType::get(
       llvm::Type::getInt8PtrTy(ctx),
-      {StructPtrType, llvm::Type::getInt64PtrTy(ctx)}, false);
+      {StructPtrType}, false);
 
   // Create the function
   llvm::Function *Serializer = llvm::cast<llvm::Function>(
@@ -653,25 +674,25 @@ bool tyr::StructGen::getSerializer(llvm::Module *Parent) {
 
   auto arg_iter = Serializer->arg_begin();
   llvm::Value *Self = &*arg_iter;
-  ++arg_iter;
-  llvm::Value *OutSizePtr = &*arg_iter;
+  llvm::cast<llvm::Argument>(Self)->addAttr(
+          llvm::Attribute::AttrKind::ReadOnly);
 
   // Check if the args are null
   llvm::BasicBlock *IsNotNull =
-      insertNullCheck({Self, OutSizePtr},
+      insertNullCheck({Self},
                       llvm::ConstantPointerNull::get(builder.getInt8PtrTy(0)),
                       builder, Serializer);
 
   // Not null, we can continue
   builder.SetInsertPoint(IsNotNull);
 
-  llvm::Value *AllocSize = builder.getInt64(0);
+  // Start out with enough space for an int64
+  llvm::Value *AllocSize = builder.getInt64(8);
   // add up the output memory
   for (auto &entry : m_elements_) {
     AllocSize =
         builder.CreateAdd(AllocSize, entry->getFieldAllocSize(Self, builder));
   }
-  builder.CreateStore(AllocSize, OutSizePtr);
 
   llvm::Value *AllocdMem =
       builder.CreateCall(Parent->getFunction("malloc"), AllocSize);
@@ -680,9 +701,11 @@ bool tyr::StructGen::getSerializer(llvm::Module *Parent) {
       {AllocdMem}, llvm::ConstantPointerNull::get(builder.getInt8PtrTy(0)),
       builder, Serializer);
   builder.SetInsertPoint(MallocSucceeded);
-  builder.CreateStore(AllocSize, OutSizePtr);
 
-  llvm::Value *CurrentIDX = builder.getInt64(0);
+  // Store the total size of the struct
+  builder.CreateStore(AllocSize, builder.CreateBitCast(AllocdMem, builder.getInt64Ty()->getPointerTo(0)));
+
+  llvm::Value *CurrentIDX = builder.getInt64(8);
   for (auto &entry : m_elements_) {
     if (entry->isCount()) { // count fields are handled already
       continue;
@@ -709,11 +732,12 @@ bool tyr::StructGen::getDeserializer(llvm::Module *Parent) {
   llvm::PointerType *StructPtrType = GenStructType->getPointerTo(0);
 
   // constructor has parameters for all of the non-mutable fields
-  llvm::FunctionType *SerializerType = llvm::FunctionType::get(
+  llvm::FunctionType *DeserializerType = llvm::FunctionType::get(
       StructPtrType,
-      {llvm::Type::getInt8PtrTy(ctx), llvm::Type::getInt64Ty(ctx)}, false);
+      {llvm::Type::getInt8PtrTy(ctx)}, false);
+
   llvm::Function *Deserializer = llvm::cast<llvm::Function>(
-      Parent->getOrInsertFunction(Name, SerializerType));
+      Parent->getOrInsertFunction(Name, DeserializerType));
   llvm::BasicBlock *EntryBlock =
       llvm::BasicBlock::Create(ctx, "", Deserializer);
   llvm::IRBuilder<> builder(EntryBlock);
@@ -721,21 +745,26 @@ bool tyr::StructGen::getDeserializer(llvm::Module *Parent) {
   // read in the byte array and its length
   auto arg_iter = Deserializer->arg_begin();
   llvm::Value *SerializedSelf = &*arg_iter;
-  ++arg_iter;
-  llvm::Value *SerializedSize = &*arg_iter;
+  llvm::cast<llvm::Argument>(SerializedSelf)->addAttr(
+          llvm::Attribute::AttrKind::ReadOnly);
+
+  llvm::Value *SerializedSize = builder.CreateLoad(builder.CreateBitCast(SerializedSelf, builder.getInt64Ty()->getPointerTo(0)));
 
   // Check if the args are invalid
   llvm::BasicBlock *IsNotNull = insertNullCheck(
-      {SerializedSelf, SerializedSize},
+      {SerializedSelf},
       llvm::ConstantPointerNull::get(StructPtrType), builder, Deserializer);
 
   builder.SetInsertPoint(IsNotNull);
+
   // allocate a new thing
   const llvm::DataLayout &DL = Parent->getDataLayout();
-  uint64_t StructAllocSize = DL.getTypeAllocSize(GenStructType);
-  llvm::Value *StructOutRaw = builder.CreateCall(
-      Parent->getFunction("malloc"), builder.getInt64(StructAllocSize));
+  llvm::Value *StructAllocSize = builder.getInt64(DL.getTypeAllocSize(GenStructType));
 
+  llvm::Value *StructOutRaw = builder.CreateCall(
+      Parent->getFunction("malloc"), StructAllocSize);
+
+  // Make sure malloc succeeded
   llvm::BasicBlock *MallocSucceeded = insertNullCheck(
       {StructOutRaw}, llvm::ConstantPointerNull::get(StructPtrType), builder,
       Deserializer);
@@ -745,7 +774,8 @@ bool tyr::StructGen::getDeserializer(llvm::Module *Parent) {
       builder.CreatePointerCast(StructOutRaw, StructPtrType);
 
   // Now set all the fields
-  llvm::Value *CurrentIDX = builder.getInt64(0);
+  // We start at 8 because we already loaded the serialized size
+  llvm::Value *CurrentIDX = builder.getInt64(8);
   for (auto &entry : m_elements_) {
     if (entry->isCount()) { // count fields are handled already
       continue;
@@ -758,6 +788,27 @@ bool tyr::StructGen::getDeserializer(llvm::Module *Parent) {
     CurrentIDX = builder.CreateAdd(CurrentIDX, OutSize);
   }
 
+  // Check that the size of everything is OK
+  // Start out with enough space for an int64
+  llvm::Value *AllocSize = builder.getInt64(8);
+  // add up the output memory
+  for (auto &entry : m_elements_) {
+    AllocSize =
+            builder.CreateAdd(AllocSize, entry->getFieldAllocSize(StructOut, builder));
+  }
+
+  // Make sure the serialized size matches (we have to throw it all away otherwise)
+  llvm::Value *CheckSize = builder.CreateICmpEQ(SerializedSize, AllocSize);
+  llvm::BasicBlock *SizeIsRight = llvm::BasicBlock::Create(ctx, "", Deserializer);
+  llvm::BasicBlock *SizeIsWrong = llvm::BasicBlock::Create(ctx, "", Deserializer);
+  builder.CreateCondBr(CheckSize, SizeIsRight, SizeIsWrong);
+
+  // If it's wrong, return NULL
+  builder.SetInsertPoint(SizeIsWrong);
+  builder.CreateRet(llvm::ConstantPointerNull::get(StructPtrType));
+
+  // We're OK, so return the thing
+  builder.SetInsertPoint(SizeIsRight);
   builder.CreateRet(StructOut);
 
   return true;
