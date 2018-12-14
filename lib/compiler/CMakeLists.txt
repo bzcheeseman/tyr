@@ -3,3 +3,4 @@ project(tyr)
 
 add_subdirectory(codegen)
 add_subdirectory(frontend)
+add_subdirectory(runtime)

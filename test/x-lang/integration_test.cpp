@@ -22,8 +22,6 @@
 
 #include "path.h"
 
-#include "FileHelper.h"
-
 #include <vector>
 #include <random>
 #include <numeric>
@@ -86,9 +84,6 @@ int main() {
 
   std::vector<float> x, y;
   uint8_t *serialized = get_serialized_storage(x, y);
-  // TODO: we should NOT have to know this as a user of the lib...
-  uint64_t serialized_len = *((uint64_t *)serialized);
-
   assert(check_serialized(serialized, x, y));
   
   return 0;

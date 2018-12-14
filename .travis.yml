@@ -1,0 +1,27 @@
+git:
+  depth: 1
+  quiet: true
+
+compiler:
+  - clang
+
+language: c++
+
+matrix:
+  fast_finish: true
+  include:
+    - os: osx
+      addons:
+        homebrew:
+          packages:
+            - llvm
+            - cmake
+          update: true
+
+jobs:
+  include:
+    - stage: build
+      script: mkdir -p build && cd build && cmake .. && make check install
+    - stage: test
+      script: cd test && make test_c && make_test_python && make_x_lang
+

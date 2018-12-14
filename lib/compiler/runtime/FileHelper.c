@@ -48,7 +48,7 @@ void *tyr_deserialize_from_file(const char *filename, deserializer_fn d) {
   FILE *file = fopen(filename, "rb");
   if (file == NULL) {
     printf("Opening file %s failed, aborting deserialization\n", filename);
-    return false;
+    return NULL;
   }
   uint64_t serialized_len = 0;
   // Read in the serialized size
@@ -56,13 +56,13 @@ void *tyr_deserialize_from_file(const char *filename, deserializer_fn d) {
   // Reset to the beginning
   fseek(file, 0, SEEK_SET);
 
-  uint8_t *serialized_struct = malloc(serialized_len);
+  uint8_t *serialized_struct = (uint8_t *)malloc(serialized_len);
   fread(serialized_struct, serialized_len, 1, file);
 
   void *deserialized = d(serialized_struct);
   if (deserialized == NULL) {
     printf("Deserializing struct failed, aborting\n");
-    return false;
+    return NULL;
   }
 
   fclose(file);

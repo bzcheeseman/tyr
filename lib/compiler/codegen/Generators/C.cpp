@@ -127,7 +127,9 @@ std::string tyr::C::getHeader() {
          "#endif // __cplusplus\n\n";
 
   out += "#include <stdbool.h>\n"
-         "#include <stdint.h>\n\n";
+         "#include <stdint.h>\n"
+         "#include <tyr/rt/FileHelper.h>\n"
+         "\n";
 
   return out;
 }
