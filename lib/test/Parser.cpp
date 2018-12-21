@@ -41,7 +41,7 @@ TEST(Parser, basic_C) {
   Parser p{generator};
   EXPECT_TRUE(p.parseFile(is));
 
-  EXPECT_TRUE(generator.emitStructForUse(kUseLangC, true, false, ""));
+  EXPECT_TRUE(generator.emitStructForUse(kUseLangC, true, false, false, ""));
 };
 
 TEST(Parser, basic_Python) {
@@ -58,6 +58,6 @@ TEST(Parser, basic_Python) {
   Parser p{generator};
   EXPECT_TRUE(p.parseFile(is));
 
-  EXPECT_TRUE(generator.emitStructForUse(kUseLangPython, false, false, ""));
+  EXPECT_TRUE(generator.emitStructForUse(kUseLangPython, false, false, false, ""));
 };
 } // namespace

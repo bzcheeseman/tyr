@@ -51,11 +51,11 @@ tyr is basically an LLVM frontend for a description language. It also does some 
 code generation to make it easier to use.
 
 ## Roadmap (in no particular order)
-- Add support for using structs as fields for other structs
+- Individual item getters/setters for repeated fields?
 - Big endian support (currently only support little endian)
 - Robustify the parser and binding generator
-- Loosen coupling between components in the backend
 - CMake support for tyr - so you can use tyr code generation in your cmake project
+- Code cleanup + refactoring (constant process)
 
 ## Compiler
 tyr's compiler operates by reading and parsing struct declarations like the one above

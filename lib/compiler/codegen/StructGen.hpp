@@ -55,7 +55,7 @@ public:
 
   // Initializes a field to zero in struct \p Struct with \p builder
   bool initField(llvm::Value *Struct, llvm::Argument *Arg,
-                 llvm::IRBuilder<> &builder) const;
+                 llvm::IRBuilder<> &builder, llvm::Module *Parent) const;
   // Destroys a field in \p Struct with \p builder. Calls free if necessary
   bool destroyField(llvm::Value *Struct, llvm::IRBuilder<> &builder) const;
 
@@ -75,7 +75,7 @@ public:
   std::string getSerializerName() const;
   std::string getDeserializerName() const;
 
-private:
+protected:
   std::string m_name_;
   llvm::Type *m_type_;
   bool m_is_mut_;

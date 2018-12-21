@@ -104,7 +104,7 @@ std::string tyr::C::convertType(const llvm::Type *t) {
   }
 }
 
-std::string tyr::C::getHeader() {
+std::string tyr::C::getHeader(bool linkRT) {
   std::string out{};
 
   out += "#pragma once\n";
@@ -127,9 +127,11 @@ std::string tyr::C::getHeader() {
          "#endif // __cplusplus\n\n";
 
   out += "#include <stdbool.h>\n"
-         "#include <stdint.h>\n"
-         "#include <tyr/rt/FileHelper.h>\n"
-         "\n";
+         "#include <stdint.h>\n";
+  if (linkRT) {
+    out += "#include <tyr/rt/FileHelper.h>\n";
+  }
+  out += "\n";
 
   return out;
 }

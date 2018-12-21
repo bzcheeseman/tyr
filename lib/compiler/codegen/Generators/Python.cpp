@@ -174,7 +174,7 @@ std::string tyr::Python::convertType(const llvm::Type *t) {
   }
 }
 
-std::string tyr::Python::getHeader() {
+std::string tyr::Python::getHeader(bool linkRT) {
   std::string out{};
   out += "\"\"\"\n"
          "====================================================================="

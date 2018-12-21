@@ -57,14 +57,15 @@ public:
   // }
   bool finalizeStruct(const std::string &StructName);
 
-  bool emitStructForUse(UseLang bind, bool EmitLLVM, bool EmitText, const std::string &OutputDir);
+  bool emitStructForUse(UseLang bind, bool EmitLLVM, bool EmitText, bool LinkRT,
+                        const std::string &OutputDir);
 
   bool linkOutsideModule(const std::string &filename);
 
 private:
   bool emitLLVM(const std::string &filename, bool EmitText);
   bool emitObjectCode(const std::string &filename);
-  bool emitBindings(const std::string &filename, UseLang bind);
+  bool emitBindings(const std::string &filename, UseLang bind, bool linkRT);
 
   llvm::Type *parseType(std::string FieldType, bool IsRepeated);
 

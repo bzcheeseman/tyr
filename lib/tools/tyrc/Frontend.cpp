@@ -78,6 +78,8 @@ cl::opt<bool> EmitLLVM("emit-llvm", cl::desc("Emit LLVM bytecode"),
 
 cl::opt<bool> EmitText("emit-text", cl::desc("Emit LLVM IR as text. Ignored if not used with emit-llvm."), cl::init(false));
 
+cl::opt<bool> LinkRuntime("link-rt", cl::desc("Link the tyr runtime into the executable."), cl::init(false));
+
 const int COULD_NOT_OPEN_FILE = -1;
 const int PARSING_FAILED = -2;
 const int CODEGEN_FAILED = -3;
@@ -124,13 +126,15 @@ int main(int argc, char *argv[]) {
   }
 
   // Link the runtime
-  if (!generator.linkOutsideModule(TYR_RT_BITCODE_FILE)) {
-    llvm::errs() << "Error ocurred linking the runtime\n";
-    return RT_LINKING_FAILED;
+  if (LinkRuntime.getValue()) {
+    if (!generator.linkOutsideModule(TYR_RT_BITCODE_FILE)) {
+      llvm::errs() << "Error occurred linking the runtime\n";
+      return RT_LINKING_FAILED;
+    }
   }
 
   // emit the struct code
-  if (!generator.emitStructForUse(BindLang.getValue(), EmitLLVM.getValue(), EmitText.getValue(),
+  if (!generator.emitStructForUse(BindLang.getValue(), EmitLLVM.getValue(), EmitText.getValue(), LinkRuntime.getValue(),
                                   OutputDir.getValue())) {
     llvm::errs() << "Error occurred emitting struct for use\n";
     return CODEGEN_FAILED;

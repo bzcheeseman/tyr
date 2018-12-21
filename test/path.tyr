@@ -6,7 +6,7 @@ struct path {
 
 struct node {
   int16 id
-  int64 data
+  repeated int64 data
 }
 
 struct edge {

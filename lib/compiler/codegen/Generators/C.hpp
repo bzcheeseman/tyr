@@ -33,7 +33,7 @@ public:
   void setupOpaqueTypes(llvm::ArrayRef<llvm::StructType *> struct_tys) override;
   std::string getFunctionProto(const llvm::Function &f) override;
   std::string convertType(const llvm::Type *t) override;
-  std::string getHeader() override;
+  std::string getHeader(bool linkRT) override;
   std::string getFooter() override;
   std::string getTypeWrappers() override;
 

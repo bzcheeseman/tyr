@@ -10,9 +10,9 @@
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
     You may obtain a copy of the License at
-    
+
         http://www.apache.org/licenses/LICENSE-2.0
-    
+
     Unless required by applicable law or agreed to in writing, software
     distributed under the License is distributed on an "AS IS" BASIS,
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,15 +22,30 @@
 
 #include "FileHelper.h"
 
+#include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
-bool tyr_serialize_to_file(const char *filename, serializer_fn s, void *tyr_struct_ptr) {
-  FILE *file = fopen(filename, "wb+");
-  if (file == NULL) {
-    printf("Opening file %s failed, aborting serialization\n", filename);
-    return false;
+bool tyr_serialize_to_file(const char *filename, bool exist_ok, serializer_fn s,
+                           void *tyr_struct_ptr) {
+  uint32_t open_flags = O_CREAT | O_WRONLY;
+  if (!exist_ok) {
+    open_flags |= O_EXCL;
   }
+
+  int fd = open(filename, open_flags, S_IRUSR | S_IWUSR);
+  if (fd < 0) {
+    if (errno == EEXIST) {
+      printf("File %s already exists, aborting\n", filename);
+      return false;
+    } else {
+      printf("Open failed with error code %d, aborting\n", errno);
+      return false;
+    }
+  }
+
   uint8_t *serialized = s(tyr_struct_ptr);
   if (serialized == NULL) {
     printf("Serializing struct failed, aborting\n");
@@ -38,9 +53,22 @@ bool tyr_serialize_to_file(const char *filename, serializer_fn s, void *tyr_stru
   }
 
   uint64_t serialized_len = *((uint64_t *)serialized);
-  fwrite(serialized, serialized_len, 1, file);
+  // Attempt to write the whole buffer
+  ssize_t write_ptr = write(fd, serialized, serialized_len);
+  size_t written = 0;
+  while (write_ptr < serialized_len && write_ptr > 0) {
+    written += write_ptr;
+    // write whatever is left
+    write_ptr = write(fd, serialized + written, serialized_len - written);
+  }
 
-  fclose(file);
+  // We exited the loop in a failure mode
+  if (write_ptr <= 0) {
+    printf("Write to file failed with error %d, aborting\n", errno);
+    return false;
+  }
+
+  close(fd);
   return true;
 }
 
@@ -50,6 +78,7 @@ void *tyr_deserialize_from_file(const char *filename, deserializer_fn d) {
     printf("Opening file %s failed, aborting deserialization\n", filename);
     return NULL;
   }
+
   uint64_t serialized_len = 0;
   // Read in the serialized size
   fread(&serialized_len, sizeof(uint64_t), 1, file);
@@ -66,7 +95,8 @@ void *tyr_deserialize_from_file(const char *filename, deserializer_fn d) {
   }
 
   fclose(file);
-  // We've copied over the serialized struct so we can get rid of the memory now.
+  // We've copied over the serialized struct so we can get rid of the memory
+  // now.
   free(serialized_struct);
 
   return deserialized;

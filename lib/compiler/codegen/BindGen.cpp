@@ -31,6 +31,10 @@ void tyr::Generator::setModuleName(std::string module_name) {
 
 void tyr::Binding::setGenerator(tyr::Generator *gen) { m_generator_ = gen; }
 
+void tyr::Binding::setLinkRT(bool linkRT) {
+  m_link_rt_ = linkRT;
+}
+
 void tyr::Binding::setModule(llvm::Module *m) { m_module_ = m; }
 
 std::string tyr::Binding::assembleBinding(bool funcsOnly) const {
@@ -42,7 +46,7 @@ std::string tyr::Binding::assembleBinding(bool funcsOnly) const {
   m_generator_->setModuleName(m_module_->getName());
 
   if (!funcsOnly) {
-    out += m_generator_->getHeader();
+    out += m_generator_->getHeader(m_link_rt_);
   }
 
   out += m_generator_->getTypeWrappers();

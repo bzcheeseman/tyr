@@ -44,7 +44,7 @@ public:
   setupOpaqueTypes(llvm::ArrayRef<llvm::StructType *> struct_tys) = 0;
   virtual std::string getFunctionProto(const llvm::Function &f) = 0;
   virtual std::string convertType(const llvm::Type *t) = 0;
-  virtual std::string getHeader() = 0;
+  virtual std::string getHeader(bool linkRT) = 0;
   virtual std::string getTypeWrappers() = 0;
   virtual std::string getFooter() = 0;
 
@@ -58,10 +58,12 @@ class Binding {
 public:
   void setGenerator(Generator *gen);
   void setModule(llvm::Module *m);
+  void setLinkRT(bool linkRT);
 
   std::string assembleBinding(bool funcsOnly = false) const;
 
 private:
+  bool m_link_rt_;
   Generator *m_generator_;
   llvm::Module *m_module_;
 };

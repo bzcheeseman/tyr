@@ -30,8 +30,8 @@
 #include "Generators/C.hpp"
 #include "Generators/Python.hpp"
 
-#include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/Bitcode/BitcodeReader.h>
+#include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/Linker/Linker.h>
@@ -109,7 +109,8 @@ bool tyr::CodeGen::finalizeStruct(const std::string &StructName) {
   return m_module_structs_.at(StructName).populateModule(m_parent_.get());
 }
 
-bool tyr::CodeGen::emitStructForUse(UseLang bind, bool EmitLLVM, bool EmitText, const std::string &OutputDir) {
+bool tyr::CodeGen::emitStructForUse(UseLang bind, bool EmitLLVM, bool EmitText, bool LinkRT,
+                                    const std::string &OutputDir) {
   bool retval = true;
 
   std::string moduleName = m_parent_->getName();
@@ -149,7 +150,7 @@ bool tyr::CodeGen::emitStructForUse(UseLang bind, bool EmitLLVM, bool EmitText, 
 
   llvm::sys::path::replace_extension(path, extension);
 
-  retval &= emitBindings(std::string(path.begin(), path.end()), bind);
+  retval &= emitBindings(std::string(path.begin(), path.end()), bind, LinkRT);
 
   if (!retval) {
     llvm::errs() << "Binding generation failed, aborting\n";
@@ -164,7 +165,8 @@ bool tyr::CodeGen::emitLLVM(const std::string &filename, bool EmitText) {
   llvm::raw_fd_ostream dest(filename, EC, llvm::sys::fs::F_None);
 
   if (EC) {
-    llvm::errs() << "Could not open file to emit LLVM bitcode: " << EC.message() << "\n";
+    llvm::errs() << "Could not open file to emit LLVM bitcode: " << EC.message()
+                 << "\n";
     return false;
   }
 
@@ -197,7 +199,8 @@ bool tyr::CodeGen::emitObjectCode(const std::string &filename) {
   llvm::raw_fd_ostream dest(filename, EC, llvm::sys::fs::F_None);
 
   if (EC) {
-    llvm::errs() << "Could not open file to emit object code: " << EC.message() << "\n";
+    llvm::errs() << "Could not open file to emit object code: " << EC.message()
+                 << "\n";
     return false;
   }
 
@@ -226,7 +229,7 @@ bool tyr::CodeGen::emitObjectCode(const std::string &filename) {
 }
 
 bool tyr::CodeGen::emitBindings(const std::string &filename,
-                                tyr::UseLang bind) {
+                                tyr::UseLang bind, bool LinkRT) {
   Binding bindings{};
 
   std::string bound;
@@ -235,7 +238,8 @@ bool tyr::CodeGen::emitBindings(const std::string &filename,
     C gen{};
     bindings.setGenerator(&gen);
     bindings.setModule(m_parent_.get());
-    bound = bindings.assembleBinding();
+    bindings.setLinkRT(LinkRT);
+    bound = bindings.assembleBinding(false);
     break;
   }
   case kUseLangPython: {
@@ -243,13 +247,14 @@ bool tyr::CodeGen::emitBindings(const std::string &filename,
     C cgen{};
     bindings.setGenerator(&cgen);
     bindings.setModule(m_parent_.get());
+    bindings.setLinkRT(LinkRT);
 
     // Create the python generator and get the C header bindings
     Python gen{};
     gen.setCHeader(bindings.assembleBinding(true));
 
     bindings.setGenerator(&gen);
-    bound = bindings.assembleBinding();
+    bound = bindings.assembleBinding(false);
     break;
   }
   default: {
@@ -262,7 +267,8 @@ bool tyr::CodeGen::emitBindings(const std::string &filename,
   llvm::raw_fd_ostream dest(filename, EC, llvm::sys::fs::F_None);
 
   if (EC) {
-    llvm::errs() << "Could not open file to emit bindings: " << EC.message() << "\n";
+    llvm::errs() << "Could not open file to emit bindings: " << EC.message()
+                 << "\n";
     return false;
   }
 
@@ -306,7 +312,8 @@ llvm::Type *tyr::CodeGen::parseType(std::string FieldType, bool IsRepeated) {
 bool tyr::CodeGen::linkOutsideModule(const std::string &filename) {
   auto FileBuf = llvm::MemoryBuffer::getFile(filename);
   if (std::error_code ec = FileBuf.getError()) {
-    llvm::errs() << "Error getting file " << filename << ": " << ec.message() << "\n";
+    llvm::errs() << "Error getting file " << filename << ": " << ec.message()
+                 << "\n";
     return false;
   }
 
@@ -320,9 +327,11 @@ bool tyr::CodeGen::linkOutsideModule(const std::string &filename) {
   ExpOutsideModule.get()->setDataLayout(m_parent_->getDataLayout());
   ExpOutsideModule.get()->setPICLevel(m_parent_->getPICLevel());
 
-  bool LinkFailed = llvm::Linker::linkModules(*m_parent_, std::move(ExpOutsideModule.get()));
+  bool LinkFailed =
+      llvm::Linker::linkModules(*m_parent_, std::move(ExpOutsideModule.get()));
   if (LinkFailed) {
-    llvm::errs() << "Linking modules failed for input file " << filename << " and this module may be unstable\n";
+    llvm::errs() << "Linking modules failed for input file " << filename
+                 << " and this module may be unstable\n";
     return false;
   }
 
