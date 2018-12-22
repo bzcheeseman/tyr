@@ -1,4 +1,4 @@
-TYRC_INSTALLED := $(shell tyr -help 2> /dev/null)
+TYRC_INSTALLED := $(shell which tyr 2> /dev/null)
 
 find_tyrc:
 ifndef TYRC_INSTALLED
@@ -9,8 +9,24 @@ else
 TYRC = tyr
 endif
 
-LDFLAGS = -L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib
-CPPFLAGS = -I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include/c++/v1 -I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/10.0.0/include -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/usr/include
+UNAME_S := $(shell uname -s)
+
+LDFLAGS :=
+ifeq ($(UNAME_S),Darwin)
+	LDFLAGS += -L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib
+endif
+
+CPPFLAGS :=
+ifeq ($(UNAME_S),Darwin)
+	CPPFLAGS += -I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include/c++/v1 -I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/10.0.0/include -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/usr/include
+endif
+
+PYTHON_BIN :=
+ifeq ($(UNAME_S),Darwin)
+	PYTHON_BIN += ../venv/bin/python
+else
+	PYTHON_BIN += python3
+endif
 
 help: find_tyrc
 	$(TYRC) -help
@@ -32,14 +48,14 @@ path.py: find_tyrc
 
 test_python: path.py
 	@echo Starting test
-	../venv/bin/python ./python/integration_test.py
+	$(PYTHON_BIN) ./python/integration_test.py
 
 copy_tyr_header:
 	mkdir -p ./tyr/rt
-	rsync ../lib/compiler/runtime/FileHelper.h ./tyr/rt/FileHelper.h
+	cp ../lib/compiler/runtime/FileHelper.h ./tyr/rt/FileHelper.h 2>/dev/null || :
 
 test_x_lang: path.bc path.py copy_tyr_header
 	clang++ -O3 $(LDFLAGS) $(CPPFLAGS) -I. -flto ./x-lang/path.bc ./x-lang/integration_test.cpp -o ./x-lang/test.out
 	@echo Starting test
 	./x-lang/test.out
-	../venv/bin/python ./x-lang/integration_test.py
+	$(PYTHON_BIN) ./x-lang/integration_test.py

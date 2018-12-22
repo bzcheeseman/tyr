@@ -12,7 +12,7 @@ and compiles them into functions like this
 ```c
 typedef void *path_ptr
 
-path_ptr create_path(uint64_t);
+path_ptr create_path(uint64_t); // immutable fields need to be passed into the constructor
 bool get_x(path_ptr, float **);
 bool set_x(path_ptr, float *, uint64_t);
 bool get_x_count(path_ptr, uint64_t *);
@@ -36,14 +36,20 @@ reference to accommodate this pattern.
 tyr compiles to LLVM IR directly, or even just an object file. This means that its output
 can be very small, depending on the size of your struct - the example above produces a 1.7K 
 object file and a 4.7K LLVM bitcode file. It also doesn't use any external libraries to do 
-any part of its work, in fact, the only non-generated functions it calls are `malloc`, `calloc` 
+any part of its work, in fact, the only non-generated functions it calls are `malloc`, `realloc` 
 and `free`. This means that you can ship your tyr generated code to anywhere that has the C 
 standard library installed (so pretty much any Unix system).
 
+tyr also ships with a small runtime of supporting libraries. These are designed to be lightweight
+and POSIX compliant, so they should also run anywhere that has the C standard library. They are
+disabled by default because tyr is designed to be lightweight and non-intrusive. They can be
+enabled by passing the `-link-rt` flag to the tyr compiler, in which case it will compile the 
+runtime functions directly into the tyr-generated code.
+
 ## How to contribute
 Literally anywhere you see the need. The bullets in the Roadmap section are a great place
-for the ambitious, even just reading the code and asking questions to help me know what's not
-clear so I can comment it better is helpful though! Contributions in the form of 
+for the ambitious, but even just reading the code and asking questions to help me know what's not
+clear so I can comment it better is helpful! Contributions in the form of 
 documentation/logos/anything you can come up with are welcomed.
 
 ## Design

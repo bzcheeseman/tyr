@@ -149,7 +149,7 @@ int main(int argc, char *argv[]) {
               ".bc -o libtyr_" + MN + ".so")
                  .c_str());
     } else {
-      system(("cd " + OutputDir.getValue() + " && gcc -flto -shared " + MN +
+      system(("cd " + OutputDir.getValue() + " && cc -flto -shared " + MN +
               ".o -o libtyr_" + MN + ".so")
                  .c_str());
     }

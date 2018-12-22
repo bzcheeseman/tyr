@@ -23,9 +23,11 @@
 #include "path.h"
 
 #include <array>
+#include <vector>
 #include <random>
 #include <numeric>
 #include <iostream>
+#include <cassert>
 
 uint8_t *get_serialized_storage(std::vector<float> &x, std::vector<float> &y) {
   path_ptr data = create_path(5);

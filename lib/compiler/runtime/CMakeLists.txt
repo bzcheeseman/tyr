@@ -1,6 +1,3 @@
-cmake_minimum_required(VERSION 3.10)
-project(tyr)
-
 file(GLOB_RECURSE COMPILE_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
 file(GLOB_RECURSE COMPILE_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 
@@ -12,10 +9,15 @@ else()
     find_program(CLANG_BIN clang)
 endif()
 
-find_program(LLVM_LINK_BIN
+find_program(LLVM_LINK_BIN REQUIRED
         NAMES
         llvm-link-6.0
-        llvm-link)
+        llvm-link-7
+        llvm-link
+
+        llvm-ld-6.0
+        llvm-ld-7
+        llvm-ld)
 
 set(CMAKE_LLIR_CREATE_SHARED_LIBRARY "${LLVM_LINK_BIN} -o <TARGET> <OBJECTS>")
 set(CMAKE_LLIR_CREATE_SHARED_MODULE "${LLVM_LINK_BIN} -o <TARGET> <OBJECTS>")

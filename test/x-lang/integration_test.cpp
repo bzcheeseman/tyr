@@ -23,6 +23,8 @@
 #include "path.h"
 
 #include <array>
+#include <vector>
+#include <cassert>
 #include <random>
 #include <numeric>
 #include <iostream>

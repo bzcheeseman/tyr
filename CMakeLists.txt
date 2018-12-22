@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.7)
 project(tyr)
 
 # Version
@@ -20,11 +20,6 @@ set(ALL_CXX_SOURCE_FILES "")
 # Add the subdirectories
 add_subdirectory(lib/compiler)
 add_subdirectory(lib/tools)
-
-# Install configuration
-install(TARGETS tyr
-            CONFIGURATIONS Release
-            RUNTIME DESTINATION bin)
 
 option(BUILD_TESTS "Build the tests" ON)
 

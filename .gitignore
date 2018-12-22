@@ -15,5 +15,6 @@ test/**/*.h
 test/**/*.out
 test/**/path.py
 test/**/*.tsf
+test/tyr
 
 venv/
