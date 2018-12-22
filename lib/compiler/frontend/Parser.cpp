@@ -79,7 +79,7 @@ bool tyr::Parser::parseLine(std::istringstream &input) {
   if (IsMut && IsRepeated) {
     // mutable repeated <type>
     FieldTy = tokens[2];
-  } else if ((IsMut && !IsRepeated) || (!IsMut && IsRepeated)) {
+  } else if (IsMut || IsRepeated) {
     // mutable <type> or repeated <type>
     FieldTy = tokens[1];
   } else {

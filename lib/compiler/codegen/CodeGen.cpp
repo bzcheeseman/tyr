@@ -232,37 +232,6 @@ bool tyr::CodeGen::emitBindings(const std::string &filename,
                                 tyr::UseLang bind, bool LinkRT) {
   Binding bindings{};
 
-  std::string bound;
-  switch (bind) {
-  case kUseLangC: {
-    C gen{};
-    bindings.setGenerator(&gen);
-    bindings.setModule(m_parent_.get());
-    bindings.setLinkRT(LinkRT);
-    bound = bindings.assembleBinding(false);
-    break;
-  }
-  case kUseLangPython: {
-    // Python needs the C header
-    C cgen{};
-    bindings.setGenerator(&cgen);
-    bindings.setModule(m_parent_.get());
-    bindings.setLinkRT(LinkRT);
-
-    // Create the python generator and get the C header bindings
-    Python gen{};
-    gen.setCHeader(bindings.assembleBinding(true));
-
-    bindings.setGenerator(&gen);
-    bound = bindings.assembleBinding(false);
-    break;
-  }
-  default: {
-    llvm::errs() << "Unknown binding language\n";
-    return false;
-  }
-  }
-
   std::error_code EC;
   llvm::raw_fd_ostream dest(filename, EC, llvm::sys::fs::F_None);
 
@@ -272,7 +241,36 @@ bool tyr::CodeGen::emitBindings(const std::string &filename,
     return false;
   }
 
-  dest << bound;
+  switch (bind) {
+    case kUseLangC: {
+      C gen{};
+      bindings.setGenerator(&gen);
+      bindings.setModule(m_parent_.get());
+      bindings.setLinkRT(LinkRT);
+      dest << bindings.assembleBinding(false);
+      break;
+    }
+    case kUseLangPython: {
+      // Python needs the C header
+      C cgen{};
+      bindings.setGenerator(&cgen);
+      bindings.setModule(m_parent_.get());
+      bindings.setLinkRT(LinkRT);
+
+      // Create the python generator and get the C header bindings
+      Python gen{};
+      gen.setCHeader(bindings.assembleBinding(true));
+
+      bindings.setGenerator(&gen);
+      dest << bindings.assembleBinding(false);
+      break;
+    }
+    default: {
+      llvm::errs() << "Unknown binding language\n";
+      return false;
+    }
+  }
+
   dest.flush();
 
   return true;
@@ -323,12 +321,14 @@ bool tyr::CodeGen::linkOutsideModule(const std::string &filename) {
     return false;
   }
 
-  ExpOutsideModule.get()->setTargetTriple(m_parent_->getTargetTriple());
-  ExpOutsideModule.get()->setDataLayout(m_parent_->getDataLayout());
-  ExpOutsideModule.get()->setPICLevel(m_parent_->getPICLevel());
+  std::unique_ptr<llvm::Module> OutsideModule = std::move(ExpOutsideModule.get());
+
+  OutsideModule->setTargetTriple(m_parent_->getTargetTriple());
+  OutsideModule->setDataLayout(m_parent_->getDataLayout());
+  OutsideModule->setPICLevel(m_parent_->getPICLevel());
 
   bool LinkFailed =
-      llvm::Linker::linkModules(*m_parent_, std::move(ExpOutsideModule.get()));
+      llvm::Linker::linkModules(*m_parent_, std::move(OutsideModule));
   if (LinkFailed) {
     llvm::errs() << "Linking modules failed for input file " << filename
                  << " and this module may be unstable\n";
