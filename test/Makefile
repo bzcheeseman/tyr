@@ -52,7 +52,7 @@ test_python: path.py
 
 copy_tyr_header:
 	mkdir -p ./tyr/rt
-	cp ../lib/compiler/runtime/FileHelper.h ./tyr/rt/FileHelper.h 2>/dev/null || :
+	cp ../lib/compiler/runtime/*.h ./tyr/rt/ 2>/dev/null || :
 
 test_x_lang: path.bc path.py copy_tyr_header
 	clang++ -O3 $(LDFLAGS) $(CPPFLAGS) -I. -flto ./x-lang/path.bc ./x-lang/integration_test.cpp -o ./x-lang/test.out
