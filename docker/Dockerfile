@@ -58,4 +58,4 @@ COPY --from=builder /usr/local/include/tyr /usr/local/include/tyr
 COPY --from=builder /usr/local/bin/tyr /usr/local/bin/tyr
 COPY --from=builder /usr/lib/llvm-7/lib/libLLVM-7.so.1 /usr/lib/libLLVM-7.so.1
 
-CMD ["bash"]
+CMD []

@@ -1,5 +1,3 @@
-#include <utility>
-
 //
 // Created by Aman LaChapelle on 11/20/18.
 //
@@ -114,6 +112,7 @@ bool tyr::CodeGen::emitStructForUse(UseLang bind, bool EmitLLVM, bool EmitText, 
   bool retval = true;
 
   std::string moduleName = m_parent_->getName();
+  m_parent_->setSourceFileName(m_parent_->getSourceFileName() + ".tyr");
 
   llvm::SmallVector<char, 35> path{OutputDir.begin(), OutputDir.end()};
 
