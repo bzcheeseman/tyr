@@ -16,5 +16,6 @@ test/**/*.out
 test/**/path.py
 test/**/*.tsf
 test/tyr
+test/install
 
 venv/

@@ -1,7 +1,7 @@
 if (NOT __ADD_LLVM_INCLUDED)
     set(__ADD_LLVM_INCLUDED TRUE)
 
-    find_package(LLVM 7.0 REQUIRED CONFIG)
+    find_package(LLVM ${LLVM_VERSION} REQUIRED CONFIG)
 
     list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
     include(AddLLVM)

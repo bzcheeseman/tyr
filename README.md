@@ -108,10 +108,8 @@ make TYRC_PATH=/path/to/tyr/install/bin test_python
 ```
 
 ## Roadmap (in no particular order)
-- Individual item getters/setters for repeated fields?
+- Individual item getters/setters for repeated fields
 - Function serialization?
 - Big endian support (currently only support little endian)
-- Robustify the parser and binding generator
-- CMake support for tyr - so you can use tyr code generation in your cmake project
 - Code cleanup + refactoring (constant process)
 - Add map support

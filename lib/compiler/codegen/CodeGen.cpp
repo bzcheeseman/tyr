@@ -126,7 +126,7 @@ bool tyr::CodeGen::emitStructForUse(UseLang bind, bool EmitLLVM, bool EmitText, 
     retval &= emitLLVM(std::string(path.begin(), path.end()), EmitText);
   } else {
     llvm::sys::path::append(path, moduleName + ".o");
-    retval &= emitObjectCode(path.data());
+    retval &= emitObjectCode(std::string(path.begin(), path.end()));
   }
 
   if (!retval) {

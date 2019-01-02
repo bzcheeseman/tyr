@@ -2,9 +2,10 @@ cmake_minimum_required(VERSION 3.7)
 project(tyr)
 
 # Version
-set (tyr_VERSION_MAJOR 0)
-set (tyr_VERSION_MINOR 1)
-set (tyr_VERSION_PATCH 0)
+set(tyr_VERSION_MAJOR 0)
+set(tyr_VERSION_MINOR 1)
+set(tyr_VERSION_PATCH 0)
+set(tyr_VERSION ${tyr_VERSION_MAJOR}.${tyr_VERSION_MINOR}.${tyr_VERSION_PATCH})
 
 # CMake compiler setup
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
@@ -12,6 +13,8 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+set(LLVM_VERSION 7.0)
+
 include(FindLLVM)
 
 # Setup for clang-format
@@ -29,6 +32,7 @@ if (BUILD_TESTS)
     include(AddGTest)
 
     add_subdirectory(lib/test)
+    add_subdirectory(test)
 endif(BUILD_TESTS)
 
 include(FindClangFormat)

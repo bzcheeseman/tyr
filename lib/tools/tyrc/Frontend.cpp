@@ -26,6 +26,7 @@
 #include <fstream>
 
 #include <llvm/ADT/Triple.h>
+#include <llvm/Support/Path.h>
 
 namespace {
 
@@ -104,7 +105,7 @@ int main(int argc, char *argv[]) {
   if (!ModuleName.getValue().empty()) {
     std::string MN = ModuleName.getValue();
   } else {
-    MN = FN.substr(0, dotPos);
+    MN = llvm::sys::path::stem(FN);
   }
 
   // init the generator

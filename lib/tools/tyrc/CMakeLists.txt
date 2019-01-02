@@ -13,6 +13,19 @@ else()
     add_definitions(-DTYR_RT_BITCODE_FILE="${CMAKE_BINARY_DIR}/tyr-rt-core.bc")
 endif()
 
-install(TARGETS tyr EXPORT tyrc
-        CONFIGURATIONS Release
+install(EXPORT tyr-targets
+        FILE tyr-targets.cmake
+        NAMESPACE tyrc::
+        DESTINATION lib/cmake/tyr
+        )
+
+configure_file(${CMAKE_SOURCE_DIR}/cmake/tyr-config.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/tyr-config.cmake @ONLY)
+configure_file(${CMAKE_SOURCE_DIR}/cmake/tyr-config-version.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/tyr-config-version.cmake @ONLY)
+
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/tyr-config.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/tyr-config-version.cmake"
+        DESTINATION lib/cmake/tyr
+        )
+
+install(TARGETS tyr EXPORT tyr-targets
         RUNTIME DESTINATION bin)
