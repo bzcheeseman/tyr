@@ -99,13 +99,23 @@ make check install
 
 ## Running the integration tests (C)
 ```bash
-make TYRC_PATH=/path/to/tyr/install/bin test_c
+cd /path/to/tyr/build
+make c_test && ./test/c_test
 ```
 
 ## Running the integration tests (Python)
 ```bash
-make TYRC_PATH=/path/to/tyr/install/bin test_python
+cd /path/to/tyr/build
+make python_test
 ```
+
+## Running the integration tests (Cross language)
+```bash
+cd /path/to/tyr/build
+make x_lang_test
+```
+
+
 
 ## Roadmap (in no particular order)
 - Individual item getters/setters for repeated fields
