@@ -110,6 +110,6 @@ make TYRC_PATH=/path/to/tyr/install/bin test_python
 ## Roadmap (in no particular order)
 - Individual item getters/setters for repeated fields
 - Function serialization?
+- Add map support
 - Big endian support (currently only support little endian)
 - Code cleanup + refactoring (constant process)
-- Add map support
