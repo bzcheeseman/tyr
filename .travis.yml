@@ -14,7 +14,6 @@ addons:
       - python
     update: true
 
-
 env:
   - PATH="/usr/local/opt/llvm/bin:${PATH}"
 
