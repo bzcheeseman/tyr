@@ -1,4 +1,5 @@
 # tyr
+[![Build Status](https://travis-ci.org/bzcheeseman/tyr.svg?branch=master)](https://travis-ci.org/bzcheeseman/tyr)
 
 tyr is a data structure compiler. It takes declarations like this
 ```
