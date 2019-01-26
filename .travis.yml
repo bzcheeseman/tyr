@@ -19,5 +19,7 @@ env:
 jobs:
   include:
     - stage: build
-      script: mkdir -p build && cd build && cmake .. && make check install && cd test && make test_c && make_test_python && make_x_lang
+      script: mkdir -p build && cd build && cmake .. && make check install
+    - stage: test
+      script: cd test && make test_c && make_test_python && make_x_lang
 
