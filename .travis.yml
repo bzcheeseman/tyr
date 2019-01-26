@@ -2,11 +2,15 @@ git:
   depth: 1
   quiet: true
 
+language: c++
+
 matrix:
   fast_finish: true
   include:
     - os: osx
       osx_image: xcode10.1
+      env:
+        - MATRIX_EVAL="brew install llvm cmake"
 
 jobs:
   include:
