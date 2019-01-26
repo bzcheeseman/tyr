@@ -11,12 +11,7 @@ matrix:
   fast_finish: true
   include:
     - os: osx
-      addons:
-        homebrew:
-          packages:
-            - llvm
-            - cmake
-          update: true
+      osx_image: xcode10.1
 
 jobs:
   include:
