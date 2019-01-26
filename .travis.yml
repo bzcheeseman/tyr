@@ -13,6 +13,9 @@ addons:
       - cmake
     update: true
 
+env:
+  - PATH="/usr/local/opt/llvm/bin:${PATH}"
+
 jobs:
   include:
     - stage: build
