@@ -5,10 +5,10 @@ git:
 env:
   - PATH="/usr/local/opt/llvm/bin:${PATH}"
 
-script: mkdir -p build && cd build && cmake .. -DCMAKE_INSTALL_PREFIX=../test && make check install
+script: mkdir -p build && cd build && cmake .. -DCMAKE_INSTALL_PREFIX=../test -DBUILD_INTEGRATION_TESTS=OFF && make check install
 
 jobs:
   include:
     - stage: test
-      script: cd build && make c_test && make python_test && make x_lang_test
+      script: cd build && cmake .. -DBUILD_INTEGRATION_TESTS=ON && make c_test && make python_test && make x_lang_test
 

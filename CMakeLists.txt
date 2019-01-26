@@ -25,14 +25,18 @@ add_subdirectory(lib/compiler)
 add_subdirectory(lib/tools)
 
 option(BUILD_TESTS "Build the tests" ON)
-
 if (BUILD_TESTS)
     enable_testing()
     add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} -V)
     include(AddGTest)
 
     add_subdirectory(lib/test)
-    add_subdirectory(test)
+
 endif(BUILD_TESTS)
+
+option(BUILD_INTEGRATION_TESTS "Build the integration tests" ON)
+if (BUILD_INTEGRATION_TESTS)
+    add_subdirectory(test)
+endif (BUILD_INTEGRATION_TESTS)
 
 include(FindClangFormat)

@@ -1,6 +1,5 @@
 find_package(tyr REQUIRED
-        HINTS ${CMAKE_CURRENT_SOURCE_DIR}/install/lib/cmake
-              ${CMAKE_BINARY_DIR}/lib/tools/tyrc)
+        HINTS ${CMAKE_CURRENT_SOURCE_DIR}/install/lib/cmake)
 
 set(CMAKE_CXX_FLAGS "-O3 -flto ${CMAKE_CXX_FLAGS}")
 
