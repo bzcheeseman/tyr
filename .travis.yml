@@ -2,6 +2,17 @@ git:
   depth: 1
   quiet: true
 
+os: osx
+osx_image: xcode10.1
+addons:
+  homebrew:
+    packages:
+      - llvm
+      - cmake
+      - python
+    update: true
+
+
 env:
   - PATH="/usr/local/opt/llvm/bin:${PATH}"
 
