@@ -4,15 +4,13 @@ git:
 
 language: c++
 
-matrix:
-  fast_finish: true
-  include:
-    - os: osx
-      osx_image: xcode10.1
-      addons:
-        homebrew:
-          packages: llvm cmake
-          update: true
+os: osx
+osx_image: xcode10.1
+addons:
+  homebrew:
+    packages: llvm cmake
+    update: true
+
 
 jobs:
   include:
