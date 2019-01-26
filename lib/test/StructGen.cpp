@@ -60,7 +60,6 @@ TEST(StructGen, verif_correct) {
                               llvm::Type::getInt8PtrTy(ctx));
 
   sg.populateModule(Parent.get());
-  Parent->print(llvm::outs(), nullptr);
   EXPECT_FALSE(llvm::verifyModule(*Parent, &llvm::errs()));
 }
 
@@ -127,8 +126,6 @@ TEST(StructGen, code_correct) {
   pm.run(*Parent);
 
   EXPECT_FALSE(llvm::verifyModule(*Parent, &llvm::errs()));
-
-  Parent->print(llvm::outs(), nullptr);
 
   std::string error_str;
 
