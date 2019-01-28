@@ -23,7 +23,6 @@
 #include "BindGen.hpp"
 #include "Generators/C.hpp"
 #include "Generators/Python.hpp"
-#include "StructGen.hpp"
 
 #include <gtest/gtest.h>
 
@@ -31,6 +30,7 @@
 
 namespace {
 
+// TODO: fix up these tests
 TEST(BindGen, C) {
   tyr::StructGen sg1{"test1", false};
   tyr::StructGen sg2{"test2", false};
@@ -100,6 +100,44 @@ TEST(BindGen, Python) {
 
   tyr::Binding b;
   tyr::Python generator{};
+  b.setGenerator(&generator);
+  b.setModule(Parent.get());
+
+  llvm::errs() << b;
+}
+
+TEST(BindGen, Go) {
+  tyr::StructGen sg1{"test1", false};
+  tyr::StructGen sg2{"test2", false};
+
+  llvm::LLVMContext ctx;
+
+  EXPECT_TRUE(sg1.addField("float", llvm::Type::getFloatTy(ctx), true));
+  EXPECT_TRUE(sg2.addField(
+      "int16", llvm::cast<llvm::Type>(llvm::Type::getInt16Ty(ctx)), false));
+  EXPECT_TRUE(sg1.addField(
+      "ptr", llvm::cast<llvm::Type>(llvm::Type::getInt8PtrTy(ctx)), true));
+
+  auto Parent = llvm::make_unique<llvm::Module>("test_module", ctx);
+
+  sg1.finalizeFields(Parent.get());
+  sg2.finalizeFields(Parent.get());
+
+  Parent->getOrInsertFunction("malloc", llvm::Type::getInt8PtrTy(ctx),
+                              llvm::Type::getInt64Ty(ctx));
+  Parent->getOrInsertFunction("realloc", llvm::Type::getInt8PtrTy(ctx),
+                              llvm::Type::getInt8PtrTy(ctx),
+                              llvm::Type::getInt64Ty(ctx));
+  Parent->getOrInsertFunction("free", llvm::Type::getVoidTy(ctx),
+                              llvm::Type::getInt8PtrTy(ctx));
+
+  sg1.populateModule(Parent.get());
+  sg2.populateModule(Parent.get());
+  //    Parent->print(llvm::outs(), nullptr);
+  EXPECT_FALSE(llvm::verifyModule(*Parent, &llvm::errs()));
+
+  tyr::Binding b;
+  tyr::Go generator{};
   b.setGenerator(&generator);
   b.setModule(Parent.get());
 

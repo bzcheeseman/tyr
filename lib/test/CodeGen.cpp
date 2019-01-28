@@ -19,8 +19,7 @@
     See the License for the specific language governing permissions and
     limitations under the License.
  */
-
-#include "StructGen.hpp"
+#include "CodeGen.hpp"
 
 #include <gtest/gtest.h>
 
@@ -37,102 +36,36 @@
 
 namespace {
 
-TEST(StructGen, verif_correct) {
-  tyr::StructGen sg{"test", false};
+TEST(CodeGen, verif_correct) {
+  tyr::CodeGen cg{"test", llvm::sys::getDefaultTargetTriple(),
+                  llvm::sys::getHostCPUName(), ""};
 
-  llvm::LLVMContext ctx;
+  cg.newStruct("testStruct", false);
 
-  EXPECT_TRUE(sg.addField("float", llvm::Type::getFloatTy(ctx), true));
-  EXPECT_TRUE(sg.addField(
-      "int16", llvm::cast<llvm::Type>(llvm::Type::getInt16Ty(ctx)), false));
-  EXPECT_TRUE(sg.addField(
-      "ptr", llvm::cast<llvm::Type>(llvm::Type::getInt8PtrTy(ctx)), true));
-  auto Parent = llvm::make_unique<llvm::Module>("test_module", ctx);
+  EXPECT_TRUE(cg.addField("testStruct", true, false, "float", "floatField"));
+  EXPECT_TRUE(cg.addField("testStruct", true, false, "int16", "intField"));
+  EXPECT_TRUE(cg.addField("testStruct", true, true, "int8", "arrayField"));
 
-  sg.finalizeFields(Parent.get());
+  cg.finalizeStruct("testStruct");
 
-  Parent->getOrInsertFunction("malloc", llvm::Type::getInt8PtrTy(ctx),
-                              llvm::Type::getInt64Ty(ctx));
-  Parent->getOrInsertFunction("realloc", llvm::Type::getInt8PtrTy(ctx),
-                              llvm::Type::getInt8PtrTy(ctx),
-                              llvm::Type::getInt64Ty(ctx));
-  Parent->getOrInsertFunction("free", llvm::Type::getVoidTy(ctx),
-                              llvm::Type::getInt8PtrTy(ctx));
-
-  sg.populateModule(Parent.get());
-  EXPECT_FALSE(llvm::verifyModule(*Parent, &llvm::errs()));
+  EXPECT_FALSE(cg.verifyModule(llvm::errs()));
 }
 
-TEST(StructGen, code_correct) {
-  tyr::StructGen sg{"test", false};
+TEST(CodeGen, code_correct) {
+  tyr::CodeGen cg{"test_module", llvm::sys::getDefaultTargetTriple(),
+                  llvm::sys::getHostCPUName(), ""};
 
-  llvm::LLVMContext ctx;
+  cg.newStruct("test", true);
 
-  sg.addField("float", llvm::Type::getFloatTy(ctx), true);
-  sg.addField("int16", llvm::cast<llvm::Type>(llvm::Type::getInt16Ty(ctx)),
-              false);
-  sg.addField("ptr", llvm::cast<llvm::Type>(llvm::Type::getInt32PtrTy(ctx)),
-              true);
-  auto Parent = llvm::make_unique<llvm::Module>("test_module", ctx);
+  EXPECT_TRUE(cg.addField("test", true, false, "float", "float"));
+  EXPECT_TRUE(cg.addField("test", false, false, "int16", "int16"));
+  EXPECT_TRUE(cg.addField("test", true, true, "int32", "ptr"));
 
-  sg.finalizeFields(Parent.get());
+  cg.finalizeStruct("test");
+  EXPECT_FALSE(cg.verifyModule(llvm::errs()));
 
-  Parent->getOrInsertFunction("malloc", llvm::Type::getInt8PtrTy(ctx),
-                              llvm::Type::getInt64Ty(ctx));
-  Parent->getOrInsertFunction("realloc", llvm::Type::getInt8PtrTy(ctx),
-                              llvm::Type::getInt8PtrTy(ctx),
-                              llvm::Type::getInt64Ty(ctx));
-  Parent->getOrInsertFunction("free", llvm::Type::getVoidTy(ctx),
-                              llvm::Type::getInt8PtrTy(ctx));
-  Parent->getOrInsertFunction(
-      "memcpy", llvm::Type::getInt8PtrTy(ctx), llvm::Type::getInt8PtrTy(ctx),
-      llvm::Type::getInt8PtrTy(ctx), llvm::Type::getInt64Ty(ctx));
-
-  sg.populateModule(Parent.get());
-
-  llvm::InitializeAllTargetInfos();
-  llvm::InitializeAllTargets();
-  llvm::InitializeAllTargetMCs();
-  llvm::InitializeAllAsmPrinters();
-  llvm::InitializeAllAsmParsers();
-  llvm::InitializeNativeTarget();
-
-  Parent->setTargetTriple(llvm::sys::getDefaultTargetTriple());
-
-  std::string error;
-  auto target = llvm::TargetRegistry::lookupTarget(
-      llvm::sys::getDefaultTargetTriple(), error);
-
-  llvm::TargetOptions options;
-  auto RM = llvm::Optional<llvm::Reloc::Model>();
-
-  llvm::TargetMachine *target_machine =
-      target->createTargetMachine(llvm::sys::getDefaultTargetTriple(),
-                                  llvm::sys::getHostCPUName(), "", options, RM);
-
-  Parent->setDataLayout(target_machine->createDataLayout());
-  Parent->setTargetTriple(llvm::sys::getDefaultTargetTriple());
-
-  llvm::verifyModule(*Parent, &llvm::errs());
-
-  llvm::legacy::PassManager pm;
-  llvm::PassManagerBuilder PMBuilder;
-
-  PMBuilder.OptLevel = 3;
-
-  target_machine->adjustPassManager(PMBuilder);
-  PMBuilder.populateModulePassManager(pm);
-
-  pm.run(*Parent);
-
-  EXPECT_FALSE(llvm::verifyModule(*Parent, &llvm::errs()));
-
-  std::string error_str;
-
-  llvm::EngineBuilder engineBuilder(std::move(Parent));
-  engineBuilder.setErrorStr(&error_str);
-  engineBuilder.setEngineKind(llvm::EngineKind::JIT);
-  llvm::ExecutionEngine *engine = engineBuilder.create();
+  llvm::ExecutionEngine *engine = cg.getExecutionEngine();
+  EXPECT_TRUE(engine != nullptr);
 
   auto constructor =
       (void *(*)(uint16_t))engine->getFunctionAddress("create_test");

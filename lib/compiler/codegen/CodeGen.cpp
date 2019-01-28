@@ -27,9 +27,11 @@
 #include "BindGen.hpp"
 #include "Generators/C.hpp"
 #include "Generators/Python.hpp"
+#include "LLVMVisitor.hpp"
 
 #include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/Linker/Linker.h>
@@ -47,8 +49,9 @@ tyr::CodeGen::CodeGen(const std::string &ModuleName,
   llvm::InitializeAllTargetInfos();
   llvm::InitializeAllTargets();
   llvm::InitializeAllTargetMCs();
-  llvm::InitializeAllAsmParsers();
   llvm::InitializeAllAsmPrinters();
+  llvm::InitializeAllAsmParsers();
+  llvm::InitializeNativeTarget();
 
   std::string Error;
   auto Target = llvm::TargetRegistry::lookupTarget(TargetTriple, Error);
@@ -81,7 +84,7 @@ tyr::CodeGen::CodeGen(const std::string &ModuleName,
 
 bool tyr::CodeGen::newStruct(const std::string &Name, bool IsPacked) {
   auto inserted = m_module_structs_.emplace(
-      std::make_pair(Name, StructGen{Name, IsPacked}));
+      std::make_pair(Name, ir::Struct{Name, IsPacked}));
   if (!inserted.second) {
     llvm::errs() << "Attempting to overwrite an existing struct " << Name;
     return false;
@@ -98,17 +101,19 @@ bool tyr::CodeGen::addField(const std::string &StructName, bool IsMutable,
     return false;
   }
 
-  return m_module_structs_.at(StructName)
+  m_module_structs_.at(StructName)
       .addField(std::move(FieldName), FT, IsMutable);
+  return true;
 }
 
 bool tyr::CodeGen::finalizeStruct(const std::string &StructName) {
-  m_module_structs_.at(StructName).finalizeFields(m_parent_.get());
-  return m_module_structs_.at(StructName).populateModule(m_parent_.get());
+  ir::Struct &s = m_module_structs_.at(StructName);
+  s.finalizeFields(m_parent_.get());
+  return compileLLVM();
 }
 
-bool tyr::CodeGen::emitStructForUse(UseLang bind, bool EmitLLVM, bool EmitText, bool LinkRT,
-                                    const std::string &OutputDir) {
+bool tyr::CodeGen::emitStructForUse(UseLang bind, bool EmitLLVM, bool EmitText,
+                                    bool LinkRT, const std::string &OutputDir) {
   bool retval = true;
 
   std::string moduleName = m_parent_->getName();
@@ -154,6 +159,21 @@ bool tyr::CodeGen::emitStructForUse(UseLang bind, bool EmitLLVM, bool EmitText, 
   if (!retval) {
     llvm::errs() << "Binding generation failed, aborting\n";
     return false;
+  }
+
+  return retval;
+}
+
+bool tyr::CodeGen::compileLLVM() {
+  visitor::LLVMVisitor generator{m_parent_.get()};
+
+  bool retval = true;
+  for (auto &s : m_module_structs_) {
+    bool visitSuccess = s.second.visit(generator);
+    if (!visitSuccess) {
+      llvm::errs() << "Codegen for struct " << s.first << " failed.";
+    }
+    retval &= visitSuccess;
   }
 
   return retval;
@@ -227,8 +247,8 @@ bool tyr::CodeGen::emitObjectCode(const std::string &filename) {
   return true;
 }
 
-bool tyr::CodeGen::emitBindings(const std::string &filename,
-                                tyr::UseLang bind, bool LinkRT) {
+bool tyr::CodeGen::emitBindings(const std::string &filename, tyr::UseLang bind,
+                                bool LinkRT) {
   Binding bindings{};
 
   std::error_code EC;
@@ -241,33 +261,33 @@ bool tyr::CodeGen::emitBindings(const std::string &filename,
   }
 
   switch (bind) {
-    case kUseLangC: {
-      C gen{};
-      bindings.setGenerator(&gen);
-      bindings.setModule(m_parent_.get());
-      bindings.setLinkRT(LinkRT);
-      dest << bindings.assembleBinding(false);
-      break;
-    }
-    case kUseLangPython: {
-      // Python needs the C header
-      C cgen{};
-      bindings.setGenerator(&cgen);
-      bindings.setModule(m_parent_.get());
-      bindings.setLinkRT(LinkRT);
+  case kUseLangC: {
+    C gen{};
+    bindings.setGenerator(&gen);
+    bindings.setModule(m_parent_.get());
+    bindings.setLinkRT(LinkRT);
+    dest << bindings.assembleBinding(false);
+    break;
+  }
+  case kUseLangPython: {
+    // Python needs the C header
+    C cgen{};
+    bindings.setGenerator(&cgen);
+    bindings.setModule(m_parent_.get());
+    bindings.setLinkRT(LinkRT);
 
-      // Create the python generator and get the C header bindings
-      Python gen{};
-      gen.setCHeader(bindings.assembleBinding(true));
+    // Create the python generator and get the C header bindings
+    Python gen{};
+    gen.setCHeader(bindings.assembleBinding(true));
 
-      bindings.setGenerator(&gen);
-      dest << bindings.assembleBinding(false);
-      break;
-    }
-    default: {
-      llvm::errs() << "Unknown binding language\n";
-      return false;
-    }
+    bindings.setGenerator(&gen);
+    dest << bindings.assembleBinding(false);
+    break;
+  }
+  default: {
+    llvm::errs() << "Unknown binding language\n";
+    return false;
+  }
   }
 
   dest.flush();
@@ -293,7 +313,7 @@ llvm::Type *tyr::CodeGen::parseType(std::string FieldType, bool IsRepeated) {
   } else if (FieldType == "double") {
     OutTy = llvm::Type::getDoubleTy(m_ctx_);
   } else if (m_module_structs_.find(FieldType) != m_module_structs_.end()) {
-    OutTy = m_module_structs_.at(FieldType).getStructType()->getPointerTo(0);
+    OutTy = m_module_structs_.at(FieldType).getType()->getPointerTo(0);
   } else {
     llvm::errs() << "Unknown field type: " << FieldType << "\n";
     return nullptr;
@@ -320,7 +340,8 @@ bool tyr::CodeGen::linkOutsideModule(const std::string &filename) {
     return false;
   }
 
-  std::unique_ptr<llvm::Module> OutsideModule = std::move(ExpOutsideModule.get());
+  std::unique_ptr<llvm::Module> OutsideModule =
+      std::move(ExpOutsideModule.get());
 
   OutsideModule->setTargetTriple(m_parent_->getTargetTriple());
   OutsideModule->setDataLayout(m_parent_->getDataLayout());
@@ -335,4 +356,26 @@ bool tyr::CodeGen::linkOutsideModule(const std::string &filename) {
   }
 
   return true;
+}
+
+bool tyr::CodeGen::verifyModule(llvm::raw_ostream &out) {
+  return llvm::verifyModule(*m_parent_, &out);
+}
+
+llvm::Module *tyr::CodeGen::getModule() { return m_parent_.get(); }
+
+llvm::ExecutionEngine *tyr::CodeGen::getExecutionEngine() {
+  std::string error_str;
+
+  llvm::EngineBuilder engineBuilder(std::move(m_parent_));
+  engineBuilder.setErrorStr(&error_str);
+  engineBuilder.setEngineKind(llvm::EngineKind::JIT);
+  llvm::ExecutionEngine *engine = engineBuilder.create();
+
+  if (!error_str.empty()) {
+    llvm::errs() << error_str;
+    return nullptr;
+  }
+
+  return engine;
 }

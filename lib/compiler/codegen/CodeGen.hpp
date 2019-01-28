@@ -29,11 +29,12 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 
-#include "StructGen.hpp"
+#include "IR.hpp"
 
 namespace llvm {
 class Module;
 class TargetMachine;
+class ExecutionEngine;
 } // namespace llvm
 
 namespace tyr {
@@ -62,7 +63,14 @@ public:
 
   bool linkOutsideModule(const std::string &filename);
 
+  bool verifyModule(llvm::raw_ostream &out);
+
+  llvm::Module *getModule();
+
+  llvm::ExecutionEngine *getExecutionEngine();
+
 private:
+  bool compileLLVM();
   bool emitLLVM(const std::string &filename, bool EmitText);
   bool emitObjectCode(const std::string &filename);
   bool emitBindings(const std::string &filename, UseLang bind, bool linkRT);
@@ -74,7 +82,7 @@ private:
   std::unique_ptr<llvm::Module> m_parent_;
   llvm::TargetMachine *m_target_machine_;
 
-  std::map<std::string, StructGen> m_module_structs_;
+  std::map<std::string, ir::Struct> m_module_structs_;
 };
 } // namespace tyr
 
