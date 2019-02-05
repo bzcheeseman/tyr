@@ -24,6 +24,8 @@
 
 #include "IR.hpp"
 
+#include "llvm/Support/Endian.h"
+
 namespace { // Utilities
 // Returns the non-null block
 llvm::BasicBlock *insertNullCheck(llvm::ArrayRef<llvm::Value *> Ptrs,
@@ -55,6 +57,75 @@ llvm::BasicBlock *insertNullCheck(llvm::ArrayRef<llvm::Value *> Ptrs,
   return IsNotNull;
 }
 
+// Swap bytes to or from little endian (if it is little endian, then it's a no-op)
+llvm::Value *swapBytes(llvm::Value *val, llvm::IRBuilder<> &builder) {
+  llvm::Module *m = builder.GetInsertBlock()->getParent()->getParent();
+  if (m->getDataLayout().isLittleEndian()) {
+    return val;
+  }
+
+  llvm::Type *ValueType = val->getType();
+  llvm::Type *PrevValueType = val->getType();
+
+  if (ValueType->isIntOrIntVectorTy() && ((ValueType->getIntegerBitWidth() % 8) != 0)) {
+    return val;
+  }
+
+  if (!ValueType->isIntOrIntVectorTy()) {
+    uint32_t TypeSize = m->getDataLayout().getTypeSizeInBits(ValueType);
+    ValueType = builder.getIntNTy(TypeSize);
+  }
+
+  llvm::Function *bswap = llvm::Intrinsic::getDeclaration(m, llvm::Intrinsic::bswap, {ValueType});
+  return builder.CreateBitCast(builder.CreateCall(bswap, {builder.CreateBitCast(val, ValueType)}), PrevValueType);
+}
+
+// Modifies the array in place, swaps all values to little endian
+void swapArrayBytes(llvm::Value *ArrayPtr, llvm::Value *Count, llvm::IRBuilder<> &builder) {
+  llvm::Module *m = builder.GetInsertBlock()->getParent()->getParent();
+  if (m->getDataLayout().isLittleEndian()) {
+    return;
+  }
+
+  llvm::Type *ArrayType = ArrayPtr->getType()->getPointerElementType();
+  llvm::Type *PrevArrayType = ArrayPtr->getType()->getPointerElementType();
+
+  if (ArrayType->isIntOrIntVectorTy() && ((ArrayType->getIntegerBitWidth() % 8) != 0)) {
+    return;
+  }
+
+  if (!ArrayType->isIntOrIntVectorTy()) {
+    uint32_t TypeSize = m->getDataLayout().getTypeSizeInBits(ArrayType);
+    ArrayType = builder.getIntNTy(TypeSize);
+  }
+
+  llvm::Function *bswap = llvm::Intrinsic::getDeclaration(m, llvm::Intrinsic::bswap,
+          {ArrayType});
+
+  llvm::Function *ParentFunc = builder.GetInsertBlock()->getParent();
+  llvm::BasicBlock *PrevBlock = builder.GetInsertBlock();
+
+  llvm::BasicBlock *loopBlock = llvm::BasicBlock::Create(m->getContext(), "byteswap_loop_" + ParentFunc->getName(), ParentFunc);
+  llvm::BasicBlock *nextBlock = llvm::BasicBlock::Create(m->getContext(), "", ParentFunc);
+  builder.CreateBr(loopBlock);
+  builder.SetInsertPoint(loopBlock);
+
+  llvm::PHINode *loopIter = builder.CreatePHI(Count->getType(), 2);
+  loopIter->addIncoming(builder.CreateBitCast(builder.getInt64(0), Count->getType()), PrevBlock);
+
+  llvm::Value *ElementGEP = builder.CreateGEP(ArrayPtr, loopIter);
+  llvm::Value *ArrayElement = builder.CreateBitCast(builder.CreateLoad(ElementGEP), ArrayType);
+  llvm::Value *SwappedElement = builder.CreateBitCast(builder.CreateCall(bswap, {ArrayElement}), PrevArrayType);
+  builder.CreateStore(SwappedElement, ElementGEP);
+
+  llvm::Value *loopNextIter = builder.CreateAdd(builder.CreateBitCast(builder.getInt64(1), Count->getType()), loopIter);
+  llvm::Value *loopEnd = builder.CreateICmpEQ(loopNextIter, Count);
+  // If the next iteration is equal to the loop end then break out
+  builder.CreateCondBr(loopEnd, nextBlock, loopBlock);
+  loopIter->addIncoming(loopNextIter, loopBlock);
+
+  builder.SetInsertPoint(nextBlock);
+}
 } // namespace
 
 tyr::visitor::LLVMVisitor::LLVMVisitor(llvm::Module *Parent)
@@ -504,9 +575,12 @@ bool tyr::visitor::LLVMVisitor::getSerializer(const tyr::ir::Field *f) const {
     // Get the count and store it first
     llvm::Value *Count = builder.CreateLoad(
         builder.CreateStructGEP(Self, f->countField->offset));
+
+    // Swap the bytes in count if necessary
+    llvm::Value *SwappedCount = swapBytes(Count, builder);
     llvm::Value *CastedCurrentPtr = builder.CreateBitCast(
         CurrentPtr, f->countField->type->getPointerTo(AddrSpace));
-    builder.CreateStore(Count, CastedCurrentPtr);
+    builder.CreateStore(SwappedCount, CastedCurrentPtr);
     // Set the output size to the size of the count field
     OutSize = getFieldAllocSize(f->countField, Self, builder);
 
@@ -518,14 +592,19 @@ bool tyr::visitor::LLVMVisitor::getSerializer(const tyr::ir::Field *f) const {
         m_parent_->getDataLayout().getABITypeAlignment(f->type);
     builder.CreateMemCpy(CurrentPtr, 0, FieldData, FieldAlignment,
                          PtrFieldAllocSize);
+
+    // Swap bytes in the CurrentPtr if necessary
+    CastedCurrentPtr = builder.CreateBitCast(CurrentPtr, FieldData->getType());
+    swapArrayBytes(CastedCurrentPtr, Count, builder);
     // Increment the OutSize by the size of the pointer field
     OutSize = builder.CreateAdd(OutSize, PtrFieldAllocSize);
   } else {
     // Just store the data
+    llvm::Value *SwappedData = swapBytes(FieldData, builder);
     OutSize = getFieldAllocSize(f, Self, builder);
     llvm::Value *CastedCurrentPtr =
         builder.CreateBitCast(CurrentPtr, f->type->getPointerTo(AddrSpace));
-    builder.CreateStore(FieldData, CastedCurrentPtr);
+    builder.CreateStore(SwappedData, CastedCurrentPtr);
   }
 
   builder.CreateRet(OutSize);
@@ -591,7 +670,7 @@ bool tyr::visitor::LLVMVisitor::getDeserializer(const tyr::ir::Field *f) const {
     // Get the count first
     llvm::Value *CastedCurrentPtr = builder.CreateBitCast(
         CurrentPtr, f->countField->type->getPointerTo(AddrSpace));
-    llvm::Value *Count = builder.CreateLoad(CastedCurrentPtr);
+    llvm::Value *Count = swapBytes(builder.CreateLoad(CastedCurrentPtr), builder);
     // Store the count into Self
     builder.CreateStore(Count,
                         builder.CreateStructGEP(Self, f->countField->offset));
@@ -616,15 +695,22 @@ bool tyr::visitor::LLVMVisitor::getDeserializer(const tyr::ir::Field *f) const {
         m_parent_->getDataLayout().getABITypeAlignment(f->type);
     builder.CreateMemCpy(FieldMem, FieldAlignment, CastedCurrentPtr, 0,
                          PtrFieldAllocSize);
+
+    llvm::Value *CastedFieldMem = builder.CreateBitCast(FieldMem, f->type);
+
+    // Swap the bytes in the array if necessary
+    swapArrayBytes(CastedFieldMem, Count, builder);
+
     // And store it into Self
-    builder.CreateStore(builder.CreateBitCast(FieldMem, f->type),
+    builder.CreateStore(CastedFieldMem,
                         builder.CreateStructGEP(Self, f->offset));
+
     OutSize = builder.CreateAdd(OutSize, PtrFieldAllocSize);
   } else {
     // Just store the data
     llvm::Value *CastedCurrentPtr =
         builder.CreateBitCast(CurrentPtr, f->type->getPointerTo(AddrSpace));
-    llvm::Value *FieldData = builder.CreateLoad(CastedCurrentPtr);
+    llvm::Value *FieldData = swapBytes(builder.CreateLoad(CastedCurrentPtr), builder);
     OutSize = getFieldAllocSize(f, Self, builder);
     builder.CreateStore(FieldData, builder.CreateStructGEP(Self, f->offset));
   }
@@ -790,9 +876,9 @@ bool tyr::visitor::LLVMVisitor::getSerializer(const tyr::ir::Struct *s) {
       Serializer);
   builder.SetInsertPoint(MallocSucceeded);
 
-  // Store the total size of the struct
+  // Store the total size of the struct, swap the bytes in the total size if necessary
   builder.CreateStore(
-      AllocSize, builder.CreateBitCast(
+      swapBytes(AllocSize, builder), builder.CreateBitCast(
                      AllocdMem, builder.getInt64Ty()->getPointerTo(AddrSpace)));
 
   llvm::Value *CurrentIDX = builder.getInt64(8);
@@ -841,8 +927,9 @@ bool tyr::visitor::LLVMVisitor::getDeserializer(const tyr::ir::Struct *s) {
   llvm::cast<llvm::Argument>(SerializedSelf)
       ->addAttr(llvm::Attribute::AttrKind::ReadOnly);
 
-  llvm::Value *SerializedSize = builder.CreateLoad(builder.CreateBitCast(
-      SerializedSelf, builder.getInt64Ty()->getPointerTo(AddrSpace)));
+  // Swap the bytes in the total size if necessary
+  llvm::Value *SerializedSize = swapBytes(builder.CreateLoad(builder.CreateBitCast(
+      SerializedSelf, builder.getInt64Ty()->getPointerTo(AddrSpace))), builder);
 
   // Check if the args are invalid
   llvm::BasicBlock *IsNotNull = insertNullCheck(

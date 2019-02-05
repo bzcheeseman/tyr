@@ -122,5 +122,4 @@ make x_lang_test
 - Individual item getters/setters for repeated fields
 - Function serialization?
 - Add map support
-- Big endian support (currently only support little endian)
 - Code cleanup + refactoring (constant process)

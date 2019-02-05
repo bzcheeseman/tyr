@@ -51,6 +51,21 @@ TEST(CodeGen, verif_correct) {
   EXPECT_FALSE(cg.verifyModule(llvm::errs()));
 }
 
+TEST(CodeGen, verif_correct_be) {
+  tyr::CodeGen cg{"test", "aarch64_be-unknown-unknown",
+                  "", ""};
+
+  cg.newStruct("testStruct", false);
+
+  EXPECT_TRUE(cg.addField("testStruct", true, false, "float", "floatField"));
+  EXPECT_TRUE(cg.addField("testStruct", true, false, "int16", "intField"));
+  EXPECT_TRUE(cg.addField("testStruct", true, true, "int8", "arrayField"));
+
+  cg.finalizeStruct("testStruct");
+
+  EXPECT_FALSE(cg.verifyModule(llvm::errs()));
+}
+
 TEST(CodeGen, code_correct) {
   tyr::CodeGen cg{"test_module", llvm::sys::getDefaultTargetTriple(),
                   llvm::sys::getHostCPUName(), ""};
