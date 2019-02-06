@@ -58,6 +58,7 @@ TEST(Parser, basic_Python) {
   Parser p{generator};
   EXPECT_TRUE(p.parseFile(is));
 
-  EXPECT_TRUE(generator.emitStructForUse(kUseLangPython, false, false, false, ""));
+  EXPECT_TRUE(
+      generator.emitStructForUse(kUseLangPython, false, false, false, ""));
 };
 } // namespace

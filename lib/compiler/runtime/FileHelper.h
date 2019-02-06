@@ -36,9 +36,9 @@ typedef void *(*deserializer_fn)(uint8_t *);
 /**
  * Serializes the tyr struct and stores it into a file. Does NOT free the memory
  * associated with the struct, if that is desired, the caller should call
- * destroy_<struct_name> on the struct pointer once this function terminates 
+ * destroy_<struct_name> on the struct pointer once this function terminates
  * successfully.
- * 
+ *
  * @param filename The name of the file to write into
  * @param exist_ok If it's OK to overwrite a file that may exist under that name
  * @param s The serializer function for the tyr struct
@@ -49,9 +49,10 @@ bool tyr_serialize_to_file(const char *filename, bool exist_ok, serializer_fn s,
                            void *tyr_struct_ptr);
 
 /**
- * Deserializes a tyr struct from a file and returns it - allocating memory for the 
- * struct with malloc. The caller is responsible for memory returned from this function.
- * 
+ * Deserializes a tyr struct from a file and returns it - allocating memory for
+ * the struct with malloc. The caller is responsible for memory returned from
+ * this function.
+ *
  * @param filename The name of the file to read from.
  * @param d The deserializer function for the tyr struct
  * @return NULL on failure, the initialized struct on success

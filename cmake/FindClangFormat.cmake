@@ -9,7 +9,6 @@ if (NOT __ADD_CLANG_FORMAT_INCLUDED)
                 -i
                 -style=llvm
                 ${ALL_CXX_SOURCE_FILES}
-
         )
     endif (CLANG_FORMAT)
 endif (NOT __ADD_CLANG_FORMAT_INCLUDED)

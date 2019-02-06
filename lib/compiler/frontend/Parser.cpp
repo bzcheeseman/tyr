@@ -44,6 +44,11 @@ bool tyr::Parser::parseLine(std::istringstream &input) {
   std::vector<std::string> tokens{std::istream_iterator<std::string>{input},
                                   std::istream_iterator<std::string>{}};
 
+  // Don't freak out on an empty line
+  if (tokens.empty()) {
+    return true;
+  }
+
   if (tokens[0] == "struct") {
     if (!m_current_struct_.empty()) {
       llvm::errs() << "tyr doesn't support nested struct declarations\n";
@@ -56,10 +61,7 @@ bool tyr::Parser::parseLine(std::istringstream &input) {
   }
 
   if (tokens[0] == "}") {
-    if (!m_generator_.finalizeStruct(m_current_struct_)) {
-      llvm::errs() << "Finalization for the struct failed\n";
-      return false;
-    }
+    m_generator_.finalizeStruct(m_current_struct_);
     m_current_struct_.clear();
     return true;
   }

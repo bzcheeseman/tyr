@@ -31,9 +31,7 @@ void tyr::Generator::setModuleName(std::string module_name) {
 
 void tyr::Binding::setGenerator(tyr::Generator *gen) { m_generator_ = gen; }
 
-void tyr::Binding::setLinkRT(bool linkRT) {
-  m_link_rt_ = linkRT;
-}
+void tyr::Binding::setLinkRT(bool linkRT) { m_link_rt_ = linkRT; }
 
 void tyr::Binding::setModule(llvm::Module *m) { m_module_ = m; }
 
