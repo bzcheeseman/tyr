@@ -66,12 +66,12 @@ bool check_serialized(uint8_t *serialized, const std::vector<float> &x, const st
   assert(get_path_y_count(deserialized, &y_count));
   assert(y_count == y.size());
 
-  float *x_, *y_;
-  assert(get_path_x(deserialized, &x_));
-  assert(get_path_y(deserialized, &y_));
-  for (int i = 0; i < 125; ++i) {
-    assert(x_[i] == x[i]);
-    assert(y_[i] == y[i]);
+  float x_, y_;
+  for (uint64_t i = 0; i < 125; ++i) {
+    assert(get_path_x_item(deserialized, i, &x_));
+    assert(get_path_y_item(deserialized, i, &y_));
+    assert(x_ == x[i]);
+    assert(y_ == y[i]);
   }
 
   destroy_path(deserialized);

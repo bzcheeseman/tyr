@@ -160,7 +160,15 @@ bool tyr::visitor::LLVMVisitor::visitField(const tyr::ir::Field &f) {
     llvm::errs() << "Get getter failed for field " << f.name << " aborting\n";
     return false;
   }
+  if (!getItemGetter(&f)) {
+    llvm::errs() << "Get item getter failed for field " << f.name << " aborting\n";
+    return false;
+  }
   if (!getSetter(&f)) {
+    llvm::errs() << "Get setter failed for field " << f.name << " aborting\n";
+    return false;
+  }
+  if (!getItemSetter(&f)) {
     llvm::errs() << "Get setter failed for field " << f.name << " aborting\n";
     return false;
   }
@@ -345,6 +353,76 @@ bool tyr::visitor::LLVMVisitor::getGetter(const ir::Field *f) const {
   return true;
 }
 
+bool tyr::visitor::LLVMVisitor::getItemGetter(const tyr::ir::Field *f) const {
+  if (!f->type->isPointerTy() || f->isStruct) { // Not an array
+    return true;
+  }
+
+  const uint32_t AddrSpace =
+          m_parent_->getDataLayout().getProgramAddressSpace();
+
+  llvm::Type *StructPtrType = f->parentType->getPointerTo(AddrSpace);
+
+  // Get an alias to the context
+  llvm::LLVMContext &ctx = m_parent_->getContext();
+
+  std::string GetterName =
+          "get_" + std::string(f->parentType->getName()) + "_" + f->name + "_item";
+
+  // Getter returns bool, takes an index, and returns the element by reference
+  llvm::FunctionType *GetterType = llvm::FunctionType::get(
+          llvm::Type::getInt1Ty(ctx),
+          {StructPtrType, llvm::Type::getInt64Ty(ctx), f->type}, false);
+
+  // Create the function
+  llvm::Function *Getter = llvm::cast<llvm::Function>(
+          m_parent_->getOrInsertFunction(GetterName, GetterType));
+  llvm::BasicBlock *GetterBlock = llvm::BasicBlock::Create(ctx, "", Getter);
+  llvm::IRBuilder<> builder(GetterBlock);
+
+  // Get the first input to the function, the struct we're operating on
+  auto arg_iter = Getter->arg_begin();
+  llvm::Value *Self = &*arg_iter;
+  ++arg_iter;
+  llvm::Value *IDX = &*arg_iter;
+  ++arg_iter;
+
+  // Make sure it's not NULL
+  llvm::BasicBlock *SelfIsNotNull = insertNullCheck(
+          {Self, &*arg_iter}, builder.getInt1(false), builder, Getter);
+
+  // Handle if it's not null
+  builder.SetInsertPoint(SelfIsNotNull);
+  llvm::Value *FieldGEP = builder.CreateStructGEP(Self, f->offset);
+  llvm::Value *FieldLoad = builder.CreateLoad(FieldGEP);
+
+  llvm::Value *CountGEP = builder.CreateStructGEP(Self, f->countField->offset);
+  llvm::Value *Count = builder.CreateLoad(CountGEP);
+
+  // Get the place where we're storing the result
+  llvm::Value *OutVal = &*arg_iter;
+
+  llvm::BasicBlock *OutOfBounds = llvm::BasicBlock::Create(ctx, "", Getter);
+  llvm::BasicBlock *InBounds = llvm::BasicBlock::Create(ctx, "", Getter);
+
+  // Check if IDX < Count
+  llvm::Value *IsInBounds = builder.CreateICmpULT(IDX, Count);
+  builder.CreateCondBr(IsInBounds, InBounds, OutOfBounds);
+
+  // Handle out of bounds
+  builder.SetInsertPoint(OutOfBounds);
+  builder.CreateRet(builder.getInt1(false));
+
+  // Handle in bounds
+  builder.SetInsertPoint(InBounds);
+  llvm::Value *ItemGEP = builder.CreateGEP(FieldLoad, IDX);
+  llvm::Value *Item = builder.CreateLoad(ItemGEP);
+  builder.CreateStore(Item, OutVal);
+  builder.CreateRet(builder.getInt1(true));
+
+  return true;
+}
+
 bool tyr::visitor::LLVMVisitor::getSetter(const tyr::ir::Field *f) const {
   if (!f->mut || f->isCount) {
     return true;
@@ -499,6 +577,76 @@ bool tyr::visitor::LLVMVisitor::getSetter(const tyr::ir::Field *f) const {
   }
 
   return true;
+}
+
+bool tyr::visitor::LLVMVisitor::getItemSetter(const tyr::ir::Field *f) const {
+  if (!f->type->isPointerTy() || f->isStruct) { // not an array
+    return true;
+  }
+
+  const uint32_t AddrSpace =
+          m_parent_->getDataLayout().getProgramAddressSpace();
+
+  llvm::Type *StructPtrType = f->parentType->getPointerTo(AddrSpace);
+
+  // Get an alias to the context
+  llvm::LLVMContext &ctx = m_parent_->getContext();
+
+  std::string SetterName =
+          "set_" + std::string(f->parentType->getName()) + "_" + f->name + "_item";
+
+  // Setter returns bool, takes an index and the item to store
+  llvm::FunctionType *SetterType = llvm::FunctionType::get(
+          llvm::Type::getInt1Ty(ctx),
+          {StructPtrType, llvm::Type::getInt64Ty(ctx), f->type->getPointerElementType()}, false);
+
+  // Create the function
+  llvm::Function *Setter = llvm::cast<llvm::Function>(
+          m_parent_->getOrInsertFunction(SetterName, SetterType));
+  llvm::BasicBlock *SetterBlock = llvm::BasicBlock::Create(ctx, "", Setter);
+  llvm::IRBuilder<> builder(SetterBlock);
+
+  // Get the first input to the function, the struct we're operating on
+  auto arg_iter = Setter->arg_begin();
+  llvm::Value *Self = &*arg_iter;
+  ++arg_iter;
+  llvm::Value *IDX = &*arg_iter;
+  ++arg_iter;
+
+  // Make sure Self not NULL
+  llvm::BasicBlock *SelfIsNotNull = insertNullCheck(
+          {Self}, builder.getInt1(false), builder, Setter);
+
+  // Handle if it's not null
+  builder.SetInsertPoint(SelfIsNotNull);
+  llvm::Value *FieldGEP = builder.CreateStructGEP(Self, f->offset);
+  llvm::Value *FieldLoad = builder.CreateLoad(FieldGEP);
+
+  llvm::Value *CountGEP = builder.CreateStructGEP(Self, f->countField->offset);
+  llvm::Value *Count = builder.CreateLoad(CountGEP);
+
+  llvm::BasicBlock *OutOfBounds = llvm::BasicBlock::Create(ctx, "", Setter);
+  llvm::BasicBlock *InBounds = llvm::BasicBlock::Create(ctx, "", Setter);
+
+  // Check if IDX < Count
+  llvm::Value *IsInBounds = builder.CreateICmpULT(IDX, Count);
+  builder.CreateCondBr(IsInBounds, InBounds, OutOfBounds);
+
+  // Handle out of bounds
+  builder.SetInsertPoint(OutOfBounds);
+  builder.CreateRet(builder.getInt1(false));
+
+  // Handle in bounds
+  // Get the thing we want to set
+  llvm::Value *ValToSet = &*arg_iter;
+
+  builder.SetInsertPoint(InBounds);
+  llvm::Value *ItemGEP = builder.CreateGEP(FieldLoad, IDX);
+  builder.CreateStore(ValToSet, ItemGEP);
+  builder.CreateRet(builder.getInt1(true));
+
+  return true;
+
 }
 
 std::string

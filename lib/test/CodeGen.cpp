@@ -92,10 +92,14 @@ TEST(CodeGen, code_correct) {
       (bool (*)(void *, float))engine->getFunctionAddress("set_test_float");
   auto getter =
       (bool (*)(void *, uint32_t **))engine->getFunctionAddress("get_test_ptr");
+  auto item_getter =
+          (bool (*)(void *, uint64_t, uint32_t *))engine->getFunctionAddress("get_test_ptr_item");
   auto count_getter = (bool (*)(void *, uint64_t *))engine->getFunctionAddress(
       "get_test_ptr_count");
   auto setter = (bool (*)(void *, uint32_t *,
                           uint64_t))engine->getFunctionAddress("set_test_ptr");
+  auto item_setter =
+          (bool (*)(void *, uint64_t, uint32_t))engine->getFunctionAddress("set_test_ptr_item");
   auto destructor =
       (void (*)(void *))engine->getFunctionAddress("destroy_test");
 
@@ -125,9 +129,17 @@ TEST(CodeGen, code_correct) {
   EXPECT_EQ(test_out_int16, 5);
   EXPECT_FLOAT_EQ(test_out_float, 3.14159265);
 
+  uint32_t got_item = 0;
   for (int i = 0; i < test_out_data_count; ++i) {
     EXPECT_EQ(test_data[i], test_out_data[i]);
+    EXPECT_TRUE(item_getter(test_struct, i, &got_item));
+    EXPECT_EQ(got_item, test_data[i]);
   }
+
+  uint32_t rand_to_set = rand();
+  EXPECT_TRUE(item_setter(test_struct, 3, rand_to_set));
+  EXPECT_TRUE(item_getter(test_struct, 3, &got_item));
+  EXPECT_EQ(got_item, rand_to_set);
 
   uint8_t *serialized = serializer(test_struct);
 
@@ -149,6 +161,9 @@ TEST(CodeGen, code_correct) {
   EXPECT_EQ(deserialized_data_count, 35);
 
   for (int i = 0; i < deserialized_data_count; ++i) {
+    if (i == 3) {
+      EXPECT_EQ(deserialized_data[i], rand_to_set);
+    }
     EXPECT_EQ(deserialized_data[i], test_out_data[i]);
   }
 
