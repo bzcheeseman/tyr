@@ -59,7 +59,9 @@ private:
                     llvm::IRBuilder<> &builder);
 
   bool getGetter(const ir::Field *f) const;
+  bool getItemGetter(const ir::Field *f) const;
   bool getSetter(const ir::Field *f) const;
+  bool getItemSetter(const ir::Field *f) const;
 
   std::string getSerializerName(const ir::Field *f) const;
   std::string getDeserializerName(const ir::Field *f) const;

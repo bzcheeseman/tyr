@@ -119,7 +119,7 @@ make x_lang_test
 
 
 ## Roadmap (in no particular order)
-- Individual item getters/setters for repeated fields
 - Function serialization?
 - Add map support
 - Code cleanup + refactoring (constant process)
+- Use the new IR to generate the bindings
