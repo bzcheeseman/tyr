@@ -123,6 +123,7 @@ make x_lang_test
 
 ## Roadmap (in no particular order)
 - Function serialization?
+- Bit-accurate structs as packed ints
 - Add map support
 - Code cleanup + refactoring (constant process)
 - Use the new IR to generate the bindings
