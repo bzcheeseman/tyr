@@ -13,17 +13,20 @@ and compiles them into functions like this
 ```c
 typedef void *path_ptr
 
-path_ptr create_path(uint64_t); // immutable fields need to be passed into the constructor
-bool get_x(path_ptr, float **);
-bool set_x(path_ptr, float *, uint64_t);
-bool get_x_count(path_ptr, uint64_t *);
-bool get_y(path_ptr, float **);
-bool set_y(path_ptr, float *, uint64_t);
-bool get_y_count(path_ptr, uint64_t *);
-bool get_idx(path_ptr, uint64_t *);
-bool set_idx(path_ptr, uint64_t); // -> this one will always return false since the field is immutable
-uint8_t *serialize_path(path_ptr, uint64_t *);
-path_ptr deserialize_path(uint8_t *, uint64_t);
+bool get_path_idx(path_ptr, uint32_t *); // no setter because it's immutable
+bool get_path_x_count(path_ptr, uint64_t *);
+bool get_path_x(path_ptr, float * *);
+bool get_path_x_item(path_ptr, uint64_t, float *);
+bool set_path_x(path_ptr, float *, uint64_t);
+bool set_path_x_item(path_ptr, uint64_t, float);
+bool get_path_y_count(path_ptr, uint64_t *);
+bool get_path_y(path_ptr, float * *);
+bool get_path_y_item(path_ptr, uint64_t, float *);
+bool set_path_y(path_ptr, float *, uint64_t);
+bool set_path_y_item(path_ptr, uint64_t, float);
+path_ptr create_path(uint32_t); // immutable fields need to be passed into the constructor
+uint8_t * serialize_path(path_ptr);
+path_ptr deserialize_path(uint8_t *);
 void destroy_path(path_ptr);
 ```
 in the form of either an LLVM bitcode file or an object file. It also generates bindings 
