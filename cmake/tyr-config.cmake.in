@@ -41,7 +41,7 @@ function(tyr_generate_llvm HDRS SRCS)
           OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.bc"
                  "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.h"
           COMMAND tyrc::tyr
-          ARGS -emit-llvm -bind-lang=c -link-rt -out-dir=${CMAKE_CURRENT_BINARY_DIR} ${ABS_FIL}
+          ARGS -emit-llvm -bind-lang=c -out-dir=${CMAKE_CURRENT_BINARY_DIR} ${ABS_FIL}
           DEPENDS ${ABS_FIL} tyrc::tyr
           COMMENT "Running tyr compiler on ${_FILE}"
           VERBATIM )
@@ -75,7 +75,7 @@ function(tyr_generate_llvm_ir HDRS SRCS)
           OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.bc"
                  "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.h"
           COMMAND tyrc::tyr
-          ARGS -emit-llvm -emit-text -bind-lang=c -link-rt -out-dir=${CMAKE_CURRENT_BINARY_DIR} ${ABS_FIL}
+          ARGS -emit-llvm -emit-text -bind-lang=c -out-dir=${CMAKE_CURRENT_BINARY_DIR} ${ABS_FIL}
           DEPENDS ${ABS_FIL} tyrc::tyr
           COMMENT "Running tyr compiler on ${_FILE}"
           VERBATIM )
@@ -88,7 +88,7 @@ function(tyr_generate_llvm_ir HDRS SRCS)
 
 endfunction()
 
-function(tyr_generate_c HDRS OBJS)
+function(tyr_generate_obj HDRS OBJS)
 
     if(NOT ARGN)
         message(SEND_ERROR "Error: tyr_generate_c called without any tyr files")
@@ -109,7 +109,7 @@ function(tyr_generate_c HDRS OBJS)
           OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.o"
                  "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.h"
           COMMAND tyrc::tyr
-          ARGS -bind-lang=c -link-rt -out-dir=${CMAKE_CURRENT_BINARY_DIR} ${ABS_FIL}
+          ARGS -bind-lang=c -out-dir=${CMAKE_CURRENT_BINARY_DIR} ${ABS_FIL}
           DEPENDS ${ABS_FIL} tyrc::tyr
           COMMENT "Running tyr compiler on ${_FILE}"
           VERBATIM )
@@ -118,38 +118,5 @@ function(tyr_generate_c HDRS OBJS)
     set_source_files_properties(${${OBJS}} ${${HDRS}} PROPERTIES GENERATED TRUE)
     set(${OBJS} ${${OBJS}} PARENT_SCOPE)
     set(${HDRS} ${${HDRS}} PARENT_SCOPE)
-
-endfunction()
-
-function(tyr_generate_python PYFILES LIBS OUTDIR)
-
-    if(NOT ARGN)
-        message(SEND_ERROR "Error: tyr_generate_python called without any tyr files")
-        return()
-    endif(NOT ARGN)
-
-    set(${LIBS})
-    set(${PYFILES})
-
-    foreach(_FILE ${ARGN})
-        get_filename_component(ABS_FIL ${_FILE} ABSOLUTE)
-        get_filename_component(FIL_WE ${_FILE} NAME_WE)
-
-        list(APPEND ${LIBS} "${OUTDIR}/libtyr_${FIL_WE}.so")
-        list(APPEND ${HDRS} "${OUTDIR}/${FIL_WE}.py")
-
-        add_custom_command(
-          OUTPUT "${OUTDIR}/libtyr_${FIL_WE}.so"
-                 "${OUTDIR}/${FIL_WE}.py"
-          COMMAND tyrc::tyr
-          ARGS -bind-lang=python -link-rt -out-dir=${OUTDIR} ${ABS_FIL}
-          DEPENDS ${ABS_FIL} tyrc::tyr
-          COMMENT "Running tyr compiler on ${_FILE}"
-          VERBATIM )
-    endforeach()
-
-    set_source_files_properties(${${LIBS}} ${${PYFILES}} PROPERTIES GENERATED TRUE)
-    set(${LIBS} ${${LIBS}} PARENT_SCOPE)
-    set(${PYFILES} ${${PYFILES}} PARENT_SCOPE)
 
 endfunction()

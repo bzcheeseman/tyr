@@ -24,10 +24,11 @@
 
 #include <sstream>
 
-#include "BindGen.hpp"
-#include "Generators/C.hpp"
-#include "Generators/Python.hpp"
-#include "LLVMVisitor.hpp"
+//#include "BindGen.hpp"
+//#include "Generators/C.hpp"
+//#include "Generators/Python.hpp"
+#include "LLVMCodegenPass.hpp"
+#include "BindingCodegenPass.hpp"
 
 #include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
@@ -43,7 +44,7 @@
 
 tyr::CodeGen::CodeGen(const std::string &ModuleName,
                       const std::string &TargetTriple, const std::string &CPU,
-                      const std::string &Features) {
+                      const std::string &Features) : m_binding_(), m_binding_out_(m_binding_) {
   m_parent_ = llvm::make_unique<llvm::Module>(ModuleName, m_ctx_);
 
   llvm::InitializeAllTargetInfos();
@@ -80,6 +81,9 @@ tyr::CodeGen::CodeGen(const std::string &ModuleName,
                                  llvm::Type::getInt64Ty(m_ctx_));
   m_parent_->getOrInsertFunction("free", llvm::Type::getVoidTy(m_ctx_),
                                  llvm::Type::getInt8PtrTy(m_ctx_));
+
+  // Register the codegen pass
+  m_manager_.registerPass(llvm::make_unique<pass::LLVMCodegenPass>(m_parent_.get()));
 }
 
 bool tyr::CodeGen::newStruct(const std::string &Name, bool IsPacked) {
@@ -92,6 +96,25 @@ bool tyr::CodeGen::newStruct(const std::string &Name, bool IsPacked) {
   return true;
 }
 
+bool tyr::CodeGen::addBindLangPass(tyr::UseLang lang) {
+  m_bind_lang_ = lang;
+  switch (lang) {
+    case kUseLangC: {
+      m_manager_.registerPass(llvm::make_unique<pass::CCodegenPass>(m_binding_out_));
+      break;
+    }
+//    case kUseLangPython: {
+//      m_manager_.registerPass(llvm::make_unique<pass::PythonCodegenPass>(m_binding_out_, m_parent_->getName()));
+//      break;
+//    }
+    default:
+      llvm::errs() << "Unsupported binding lang " << lang;
+      return false;
+  }
+
+  return true;
+}
+
 bool tyr::CodeGen::addField(const std::string &StructName, bool IsMutable,
                             bool IsRepeated, std::string FieldType,
                             std::string FieldName) {
@@ -101,19 +124,25 @@ bool tyr::CodeGen::addField(const std::string &StructName, bool IsMutable,
     return false;
   }
 
-  m_module_structs_.at(StructName)
-      .addField(std::move(FieldName), FT, IsMutable);
+  // TODO: handle map fields
+  if (IsRepeated) {
+    m_module_structs_.at(StructName)
+        .addRepeatedField(std::move(FieldName), FT, IsMutable);
+  } else {
+    m_module_structs_.at(StructName)
+        .addField(std::move(FieldName), FT, IsMutable);
+  }
+
   return true;
 }
 
 bool tyr::CodeGen::finalizeStruct(const std::string &StructName) {
   ir::Struct &s = m_module_structs_.at(StructName);
   s.finalizeFields(m_parent_.get());
-  return compileLLVM();
+  return m_manager_.runOnStruct(s);
 }
 
-bool tyr::CodeGen::emitStructForUse(UseLang bind, bool EmitLLVM, bool EmitText,
-                                    bool LinkRT, const std::string &OutputDir) {
+bool tyr::CodeGen::emit(bool EmitLLVM, bool EmitText, const std::string &OutputDir) {
   bool retval = true;
 
   std::string moduleName = m_parent_->getName();
@@ -121,17 +150,21 @@ bool tyr::CodeGen::emitStructForUse(UseLang bind, bool EmitLLVM, bool EmitText,
 
   llvm::SmallVector<char, 35> path{OutputDir.begin(), OutputDir.end()};
 
-  if (EmitLLVM) {
-    if (EmitText) {
-      llvm::sys::path::append(path, moduleName + ".ll");
-    } else {
-      llvm::sys::path::append(path, moduleName + ".bc");
-    }
-
-    retval &= emitLLVM(std::string(path.begin(), path.end()), EmitText);
+  if (OutputDir.empty()) {
+    retval &= emitLLVM("", true);
   } else {
-    llvm::sys::path::append(path, moduleName + ".o");
-    retval &= emitObjectCode(std::string(path.begin(), path.end()));
+    if (EmitLLVM) {
+      if (EmitText) {
+        llvm::sys::path::append(path, moduleName + ".ll");
+      } else {
+        llvm::sys::path::append(path, moduleName + ".bc");
+      }
+
+      retval &= emitLLVM(std::string(path.begin(), path.end()), EmitText);
+    } else {
+      llvm::sys::path::append(path, moduleName + ".o");
+      retval &= emitObjectCode(std::string(path.begin(), path.end()));
+    }
   }
 
   if (!retval) {
@@ -139,22 +172,26 @@ bool tyr::CodeGen::emitStructForUse(UseLang bind, bool EmitLLVM, bool EmitText,
     return false;
   }
 
-  std::string extension{};
-  switch (bind) {
-  case kUseLangC:
-    extension = ".h";
-    break;
-  case kUseLangPython:
-    extension = ".py";
-    break;
-  default:
-    llvm::errs() << "Unknown binding language: " << bind;
-    return false;
+  if (OutputDir.empty()) {
+    retval &= emitBindings("");
+  } else {
+    std::string extension{};
+    switch (m_bind_lang_) {
+      case kUseLangC:
+        extension = ".h";
+        break;
+//      case kUseLangPython:
+//        extension = ".py";
+//        break;
+      default:
+        llvm::errs() << "Unknown binding language: " << m_bind_lang_;
+        return false;
+    }
+
+    llvm::sys::path::replace_extension(path, extension);
+
+    retval &= emitBindings(std::string(path.begin(), path.end()));
   }
-
-  llvm::sys::path::replace_extension(path, extension);
-
-  retval &= emitBindings(std::string(path.begin(), path.end()), bind, LinkRT);
 
   if (!retval) {
     llvm::errs() << "Binding generation failed, aborting\n";
@@ -164,31 +201,7 @@ bool tyr::CodeGen::emitStructForUse(UseLang bind, bool EmitLLVM, bool EmitText,
   return retval;
 }
 
-bool tyr::CodeGen::compileLLVM() {
-  visitor::LLVMVisitor generator{m_parent_.get()};
-
-  bool retval = true;
-  for (auto &s : m_module_structs_) {
-    bool visitSuccess = s.second.visit(generator);
-    if (!visitSuccess) {
-      llvm::errs() << "Codegen for struct " << s.first << " failed.";
-    }
-    retval &= visitSuccess;
-  }
-
-  return retval;
-}
-
 bool tyr::CodeGen::emitLLVM(const std::string &filename, bool EmitText) {
-  std::error_code EC;
-  llvm::raw_fd_ostream dest(filename, EC, llvm::sys::fs::F_None);
-
-  if (EC) {
-    llvm::errs() << "Could not open file to emit LLVM bitcode: " << EC.message()
-                 << "\n";
-    return false;
-  }
-
   llvm::legacy::PassManager PM;
 
   llvm::PassManagerBuilder PMBuilder;
@@ -203,6 +216,20 @@ bool tyr::CodeGen::emitLLVM(const std::string &filename, bool EmitText) {
     return false;
   }
 
+  if (filename.empty()) {
+//    m_parent_->print(llvm::outs(), nullptr);
+    return true;
+  }
+
+  std::error_code EC;
+  llvm::raw_fd_ostream dest(filename, EC, llvm::sys::fs::F_None);
+
+  if (EC) {
+    llvm::errs() << "Could not open file to emit LLVM bitcode: " << EC.message()
+                 << "\n";
+    return false;
+  }
+
   if (EmitText) {
     m_parent_->print(dest, nullptr);
   } else {
@@ -210,6 +237,7 @@ bool tyr::CodeGen::emitLLVM(const std::string &filename, bool EmitText) {
   }
 
   dest.flush();
+
   return true;
 }
 
@@ -247,9 +275,11 @@ bool tyr::CodeGen::emitObjectCode(const std::string &filename) {
   return true;
 }
 
-bool tyr::CodeGen::emitBindings(const std::string &filename, tyr::UseLang bind,
-                                bool LinkRT) {
-  Binding bindings{};
+bool tyr::CodeGen::emitBindings(const std::string &filename) {
+  if (filename.empty()) {
+//    llvm::outs() << m_binding_out_.str();
+    return true;
+  }
 
   std::error_code EC;
   llvm::raw_fd_ostream dest(filename, EC, llvm::sys::fs::F_None);
@@ -260,35 +290,7 @@ bool tyr::CodeGen::emitBindings(const std::string &filename, tyr::UseLang bind,
     return false;
   }
 
-  switch (bind) {
-  case kUseLangC: {
-    C gen{};
-    bindings.setGenerator(&gen);
-    bindings.setModule(m_parent_.get());
-    bindings.setLinkRT(LinkRT);
-    dest << bindings.assembleBinding(false);
-    break;
-  }
-  case kUseLangPython: {
-    // Python needs the C header
-    C cgen{};
-    bindings.setGenerator(&cgen);
-    bindings.setModule(m_parent_.get());
-    bindings.setLinkRT(LinkRT);
-
-    // Create the python generator and get the C header bindings
-    Python gen{};
-    gen.setCHeader(bindings.assembleBinding(true));
-
-    bindings.setGenerator(&gen);
-    dest << bindings.assembleBinding(false);
-    break;
-  }
-  default: {
-    llvm::errs() << "Unknown binding language\n";
-    return false;
-  }
-  }
+  dest << m_binding_out_.str();
 
   dest.flush();
 

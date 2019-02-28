@@ -23,15 +23,22 @@
 #ifndef TYR_VISITOR_HPP
 #define TYR_VISITOR_HPP
 
+#include <memory>
+
 namespace tyr {
 namespace ir {
 class Struct;
 struct Field;
 
-class Visitor {
+class Pass {
 public:
-  virtual bool visitStruct(const Struct &s) = 0;
-  virtual bool visitField(const Field &f) = 0;
+  virtual ~Pass() = default;
+  
+  using Ptr = std::unique_ptr<Pass>;
+
+  virtual std::string getName() = 0;
+  virtual bool runOnStruct(const Struct &s) = 0;
+  virtual bool runOnField(const Field &f) = 0;
 };
 } // namespace ir
 } // namespace tyr

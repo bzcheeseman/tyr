@@ -30,6 +30,7 @@ using namespace tyr;
 TEST(Parser, basic_C) {
   CodeGen generator{"basic_test_c", llvm::sys::getDefaultTargetTriple(),
                     llvm::sys::getHostCPUName(), ""};
+  EXPECT_TRUE(generator.addBindLangPass(kUseLangC));
 
   std::string struct_def = "struct test_struct {\n"
                            "  mutable int16 int_field\n"
@@ -41,24 +42,24 @@ TEST(Parser, basic_C) {
   Parser p{generator};
   EXPECT_TRUE(p.parseFile(is));
 
-  EXPECT_TRUE(generator.emitStructForUse(kUseLangC, true, false, false, ""));
+  EXPECT_TRUE(generator.emit(true, true, ""));
 };
 
-TEST(Parser, basic_Python) {
-  CodeGen generator{"basic_test_py", llvm::sys::getDefaultTargetTriple(),
-                    llvm::sys::getHostCPUName(), ""};
-
-  std::string struct_def = "struct test_struct {\n"
-                           "  mutable repeated int16 int_field\n"
-                           "  mutable float float_array\n"
-                           "  repeated bool boolean_array\n"
-                           "}";
-
-  std::istringstream is(struct_def);
-  Parser p{generator};
-  EXPECT_TRUE(p.parseFile(is));
-
-  EXPECT_TRUE(
-      generator.emitStructForUse(kUseLangPython, false, false, false, ""));
-};
+//TEST(Parser, basic_Python) {
+//  CodeGen generator{"basic_test_py", llvm::sys::getDefaultTargetTriple(),
+//                    llvm::sys::getHostCPUName(), ""};
+//  EXPECT_TRUE(generator.addBindLangPass(kUseLangPython));
+//
+//  std::string struct_def = "struct test_struct {\n"
+//                           "  mutable repeated int16 int_field\n"
+//                           "  mutable float float_array\n"
+//                           "  repeated bool boolean_array\n"
+//                           "}";
+//
+//  std::istringstream is(struct_def);
+//  Parser p{generator};
+//  EXPECT_TRUE(p.parseFile(is));
+//
+//  EXPECT_TRUE(generator.emit(true, true, ""));
+//};
 } // namespace

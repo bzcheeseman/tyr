@@ -27,7 +27,7 @@
 #include <string>
 #include <vector>
 
-#include "Visitor.hpp"
+#include "Pass.hpp"
 
 namespace llvm {
 class Type;
@@ -45,13 +45,14 @@ public:
   Struct(std::string name, bool isPacked);
 
   void addField(std::string name, llvm::Type *type, bool isMutable);
+  void addRepeatedField(std::string name, llvm::Type *type, bool isMutable);
   void finalizeFields(llvm::Module *Parent);
 
   llvm::ArrayRef<FieldPtr> getFields() const;
   const std::string &getName() const;
   llvm::StructType *getType() const;
 
-  bool visit(Visitor &visitor);
+  bool visit(Pass &visitor) const;
 
 private:
   const std::string m_name_;
@@ -65,9 +66,11 @@ struct Field {
   std::string name;
   llvm::Type *type;
   bool mut;
+  bool isRepeated;
   bool isStruct;
   bool isCount;
   Field *countField = nullptr;
+  Field *countsFor = nullptr;
   llvm::StructType *parentType;
   uint32_t offset;
 };
