@@ -52,8 +52,7 @@ TEST(CodeGen, verif_correct) {
 }
 
 TEST(CodeGen, verif_correct_be) {
-  tyr::CodeGen cg{"test", "aarch64_be-unknown-unknown",
-                  "", ""};
+  tyr::CodeGen cg{"test", "aarch64_be-unknown-unknown", "", ""};
 
   cg.newStruct("testStruct", false);
 
@@ -93,13 +92,17 @@ TEST(CodeGen, code_correct) {
   auto getter =
       (bool (*)(void *, uint32_t **))engine->getFunctionAddress("get_test_ptr");
   auto item_getter =
-          (bool (*)(void *, uint64_t, uint32_t *))engine->getFunctionAddress("get_test_ptr_item");
+      (bool (*)(void *, uint64_t, uint32_t *))engine->getFunctionAddress(
+          "get_test_ptr_item");
   auto count_getter = (bool (*)(void *, uint64_t *))engine->getFunctionAddress(
       "get_test_ptr_count");
+  auto count_setter = (bool (*)(void *, uint64_t))engine->getFunctionAddress(
+          "set_test_ptr_count");
   auto setter = (bool (*)(void *, uint32_t *,
                           uint64_t))engine->getFunctionAddress("set_test_ptr");
   auto item_setter =
-          (bool (*)(void *, uint64_t, uint32_t))engine->getFunctionAddress("set_test_ptr_item");
+      (bool (*)(void *, uint64_t, uint32_t))engine->getFunctionAddress(
+          "set_test_ptr_item");
   auto destructor =
       (void (*)(void *))engine->getFunctionAddress("destroy_test");
 
@@ -119,7 +122,10 @@ TEST(CodeGen, code_correct) {
 
   void *test_struct = constructor(5);
 
-  EXPECT_TRUE(setter(test_struct, test_data, 35));
+  EXPECT_TRUE(count_setter(test_struct, 35));
+  for (int i = 0; i < 35; ++i) {
+    EXPECT_TRUE(item_setter(test_struct, i, test_data[i]));
+  }
   EXPECT_TRUE(set_float(test_struct, 3.14159265));
   EXPECT_TRUE(getter(test_struct, &test_out_data));
   EXPECT_TRUE(count_getter(test_struct, &test_out_data_count));

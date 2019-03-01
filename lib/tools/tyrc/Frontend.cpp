@@ -55,10 +55,12 @@ cl::opt<std::string> ModuleName("module-name",
 cl::opt<tyr::UseLang>
     BindLang("bind-lang",
              cl::desc("Set the langauge in which to emit bindings:"),
-             cl::values(clEnumValN(tyr::kUseLangC, "c",
-                                   "Generate C bindings (header file)"),
-                        clEnumValN(tyr::kUseLangPython, "python",
-                                   "Generate Python bindings (.py file)")),
+             cl::values(
+                     clEnumValN(tyr::kUseLangC, "c",
+                                   "Generate C bindings (header file)")
+//                     clEnumValN(tyr::kUseLangPython, "python",
+//                                   "Generate Python bindings (.py file)"),
+             ),
              cl::cat(tyrCompilerOptions));
 
 cl::opt<std::string> Target("target-triple", cl::desc("The target triple"),
@@ -79,12 +81,11 @@ cl::opt<bool> EmitLLVM("emit-llvm", cl::desc("Emit LLVM bytecode"),
 
 cl::opt<bool> EmitText("emit-text", cl::desc("Emit LLVM IR as text. Ignored if not used with emit-llvm."), cl::init(false));
 
-cl::opt<bool> LinkRuntime("link-rt", cl::desc("Link the tyr runtime into the executable."), cl::init(false));
-
 const int COULD_NOT_OPEN_FILE = -1;
 const int PARSING_FAILED = -2;
 const int CODEGEN_FAILED = -3;
 const int RT_LINKING_FAILED = -4;
+const int ADD_PASS_FAILED = -5;
 
 } // namespace
 
@@ -112,6 +113,11 @@ int main(int argc, char *argv[]) {
   tyr::CodeGen generator{MN, Target.getValue(), CPU.getValue(),
                          Features.getValue()};
 
+  if (!generator.addBindLangPass(BindLang.getValue())) {
+    llvm::errs() << "Failed to add a binding in that language\n";
+    return ADD_PASS_FAILED;
+  }
+
   // read the file
   std::ifstream in_file{FN};
   if (!in_file.is_open()) {
@@ -127,34 +133,31 @@ int main(int argc, char *argv[]) {
   }
 
   // Link the runtime
-  if (LinkRuntime.getValue()) {
-    if (!generator.linkOutsideModule(TYR_RT_BITCODE_FILE)) {
-      llvm::errs() << "Error occurred linking the runtime\n";
-      return RT_LINKING_FAILED;
-    }
+  if (!generator.linkOutsideModule(TYR_RT_BITCODE_FILE)) {
+    llvm::errs() << "Error occurred linking the runtime\n";
+    return RT_LINKING_FAILED;
   }
 
   // emit the struct code
-  if (!generator.emitStructForUse(BindLang.getValue(), EmitLLVM.getValue(), EmitText.getValue(), LinkRuntime.getValue(),
-                                  OutputDir.getValue())) {
+  if (!generator.emit(EmitLLVM.getValue(), EmitText.getValue(), OutputDir.getValue())) {
     llvm::errs() << "Error occurred emitting struct for use\n";
     return CODEGEN_FAILED;
   }
 
   // should I compile into .so?
-  bool ShouldCompileToDylib = (BindLang.getValue() == tyr::kUseLangPython);
-  if (ShouldCompileToDylib) {
-
-    if (EmitLLVM.getValue()) {
-      system(("cd " + OutputDir.getValue() + " && clang -flto -shared " + MN +
-              ".bc -o libtyr_" + MN + ".so")
-                 .c_str());
-    } else {
-      system(("cd " + OutputDir.getValue() + " && cc -flto -shared " + MN +
-              ".o -o libtyr_" + MN + ".so")
-                 .c_str());
-    }
-  }
+//  bool ShouldCompileToDylib = (BindLang.getValue() == tyr::kUseLangPython);
+//  if (ShouldCompileToDylib) {
+//
+//    if (EmitLLVM.getValue()) {
+//      system(("cd " + OutputDir.getValue() + " && clang -flto -shared " + MN +
+//              ".bc -o libtyr_" + MN + ".so")
+//                 .c_str());
+//    } else {
+//      system(("cd " + OutputDir.getValue() + " && cc -flto -shared " + MN +
+//              ".o -o libtyr_" + MN + ".so")
+//                 .c_str());
+//    }
+//  }
 
   return 0;
 }

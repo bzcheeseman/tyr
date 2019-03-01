@@ -1,5 +1,5 @@
 add_subdirectory(ir)
-add_subdirectory(visitors)
+add_subdirectory(passes)
 add_subdirectory(codegen)
 add_subdirectory(frontend)
 add_subdirectory(runtime)

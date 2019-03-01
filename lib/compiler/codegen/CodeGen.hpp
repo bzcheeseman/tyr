@@ -23,13 +23,14 @@
 #ifndef TYR_IRGEN_HPP
 #define TYR_IRGEN_HPP
 
-#include <map>
+#include <unordered_map>
 #include <string>
 
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 
 #include "IR.hpp"
+#include "PassManager.hpp"
 
 namespace llvm {
 class Module;
@@ -40,13 +41,15 @@ class ExecutionEngine;
 namespace tyr {
 enum UseLang {
   kUseLangC,
-  kUseLangPython,
+//  kUseLangPython,
 };
 
 class CodeGen {
 public:
   CodeGen(const std::string &ModuleName, const std::string &TargetTriple,
           const std::string &CPU, const std::string &Features);
+
+  bool addBindLangPass(UseLang lang);
 
   // struct something {
   bool newStruct(const std::string &Name, bool IsPacked);
@@ -58,8 +61,7 @@ public:
   // }
   bool finalizeStruct(const std::string &StructName);
 
-  bool emitStructForUse(UseLang bind, bool EmitLLVM, bool EmitText, bool LinkRT,
-                        const std::string &OutputDir);
+  bool emit(bool EmitLLVM, bool EmitText, const std::string &OutputDir);
 
   bool linkOutsideModule(const std::string &filename);
 
@@ -70,10 +72,9 @@ public:
   llvm::ExecutionEngine *getExecutionEngine();
 
 private:
-  bool compileLLVM();
   bool emitLLVM(const std::string &filename, bool EmitText);
   bool emitObjectCode(const std::string &filename);
-  bool emitBindings(const std::string &filename, UseLang bind, bool linkRT);
+  bool emitBindings(const std::string &filename);
 
   llvm::Type *parseType(std::string FieldType, bool IsRepeated);
 
@@ -82,7 +83,12 @@ private:
   std::unique_ptr<llvm::Module> m_parent_;
   llvm::TargetMachine *m_target_machine_;
 
-  std::map<std::string, ir::Struct> m_module_structs_;
+  ir::PassManager m_manager_;
+  UseLang m_bind_lang_;
+  std::string m_binding_;
+  llvm::raw_string_ostream m_binding_out_;
+
+  std::unordered_map<std::string, ir::Struct> m_module_structs_;
 };
 } // namespace tyr
 

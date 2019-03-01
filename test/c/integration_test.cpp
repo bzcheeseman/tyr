@@ -24,10 +24,11 @@
 
 #include <array>
 #include <vector>
+#include <cassert>
 #include <random>
 #include <numeric>
 #include <iostream>
-#include <cassert>
+#include <fstream>
 
 uint8_t *get_serialized_storage(std::vector<float> &x, std::vector<float> &y) {
   path_ptr data = create_path(5);
@@ -40,11 +41,12 @@ uint8_t *get_serialized_storage(std::vector<float> &x, std::vector<float> &y) {
     x.push_back(dist(e));
     y.push_back(dist(e));
   }
-  x.shrink_to_fit();
-  y.shrink_to_fit();
 
   set_path_x(data, x.data(), x.size());
   set_path_y(data, y.data(), y.size());
+
+  tyr_serialize_to_file("serialized_path.tsf", true, &serialize_path, data);
+
   uint8_t *out = serialize_path(data);
   destroy_path(data);
   return out;
@@ -68,8 +70,8 @@ bool check_serialized(uint8_t *serialized, const std::vector<float> &x, const st
 
   float x_, y_;
   for (uint64_t i = 0; i < 125; ++i) {
-    assert(get_path_x_item(deserialized, i, &x_));
-    assert(get_path_y_item(deserialized, i, &y_));
+    get_path_x_item(deserialized, i, &x_);
+    get_path_y_item(deserialized, i, &y_);
     assert(x_ == x[i]);
     assert(y_ == y[i]);
   }
@@ -129,6 +131,8 @@ uint8_t *get_serialized_graph() {
     }
   }
 
+  tyr_serialize_to_file("serialized_graph.tsf", true, &serialize_graph, g);
+
   uint8_t *serialized = serialize_graph(g);
   destroy_graph(g);
   return serialized;
@@ -169,13 +173,49 @@ bool check_graph(uint8_t *serialized) {
   return true;
 }
 
+bool check_graph_file() {
+  graph_ptr deserialized = tyr_deserialize_from_file("serialized_graph.tsf", &deserialize_graph);
+
+  edge_ptr *out_edges = nullptr;
+  get_graph_edge(deserialized, &out_edges);
+  for (int i = 0; i < 14; ++i) {
+    uint16_t src, sink;
+    get_edge_src(out_edges[i], &src);
+    get_edge_sink(out_edges[i], &sink);
+    assert(src == i && sink == i+1);
+  }
+
+  node_ptr *out_nodes = nullptr;
+  get_graph_node(deserialized, &out_nodes);
+  for (int i = 0; i < 15; ++i) {
+    uint16_t id;
+    uint64_t data_count;
+    uint64_t *data;
+
+    get_node_id(out_nodes[i], &id);
+    assert(id == i);
+    get_node_data_count(out_nodes[i], &data_count);
+    assert(data_count == 3);
+    get_node_data(out_nodes[i], &data);
+    for (int j = 0; j < 3; ++j) {
+      assert(data[j] == 1);
+    }
+  }
+
+  destroy_graph(deserialized);
+
+  return true;
+}
+
 int main() {
+
   std::vector<float> x, y;
   uint8_t *serialized = get_serialized_storage(x, y);
   assert(check_serialized(serialized, x, y));
 
   uint8_t *serialized_graph = get_serialized_graph();
   assert(check_graph(serialized_graph));
+  assert(check_graph_file());
 
   std::cout << "Test succeeded" << std::endl;
 

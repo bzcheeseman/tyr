@@ -20,7 +20,7 @@
     limitations under the License.
  */
 
-#include "LLVMVisitor.hpp"
+#include "LLVMCodegenPass.hpp"
 
 #include "IR.hpp"
 
@@ -57,7 +57,8 @@ llvm::BasicBlock *insertNullCheck(llvm::ArrayRef<llvm::Value *> Ptrs,
   return IsNotNull;
 }
 
-// Swap bytes to or from little endian (if it is little endian, then it's a no-op)
+// Swap bytes to or from little endian (if it is little endian, then it's a
+// no-op)
 llvm::Value *swapBytes(llvm::Value *val, llvm::IRBuilder<> &builder) {
   llvm::Module *m = builder.GetInsertBlock()->getParent()->getParent();
   if (m->getDataLayout().isLittleEndian()) {
@@ -67,7 +68,8 @@ llvm::Value *swapBytes(llvm::Value *val, llvm::IRBuilder<> &builder) {
   llvm::Type *ValueType = val->getType();
   llvm::Type *PrevValueType = val->getType();
 
-  if (ValueType->isIntOrIntVectorTy() && ((ValueType->getIntegerBitWidth() % 8) != 0)) {
+  if (ValueType->isIntOrIntVectorTy() &&
+      ((ValueType->getIntegerBitWidth() % 8) != 0)) {
     return val;
   }
 
@@ -76,12 +78,16 @@ llvm::Value *swapBytes(llvm::Value *val, llvm::IRBuilder<> &builder) {
     ValueType = builder.getIntNTy(TypeSize);
   }
 
-  llvm::Function *bswap = llvm::Intrinsic::getDeclaration(m, llvm::Intrinsic::bswap, {ValueType});
-  return builder.CreateBitCast(builder.CreateCall(bswap, {builder.CreateBitCast(val, ValueType)}), PrevValueType);
+  llvm::Function *bswap =
+      llvm::Intrinsic::getDeclaration(m, llvm::Intrinsic::bswap, {ValueType});
+  return builder.CreateBitCast(
+      builder.CreateCall(bswap, {builder.CreateBitCast(val, ValueType)}),
+      PrevValueType);
 }
 
 // Modifies the array in place, swaps all values to little endian
-void swapArrayBytes(llvm::Value *ArrayPtr, llvm::Value *Count, llvm::IRBuilder<> &builder) {
+void swapArrayBytes(llvm::Value *ArrayPtr, llvm::Value *Count,
+                    llvm::IRBuilder<> &builder) {
   llvm::Module *m = builder.GetInsertBlock()->getParent()->getParent();
   if (m->getDataLayout().isLittleEndian()) {
     return;
@@ -90,7 +96,8 @@ void swapArrayBytes(llvm::Value *ArrayPtr, llvm::Value *Count, llvm::IRBuilder<>
   llvm::Type *ArrayType = ArrayPtr->getType()->getPointerElementType();
   llvm::Type *PrevArrayType = ArrayPtr->getType()->getPointerElementType();
 
-  if (ArrayType->isIntOrIntVectorTy() && ((ArrayType->getIntegerBitWidth() % 8) != 0)) {
+  if (ArrayType->isIntOrIntVectorTy() &&
+      ((ArrayType->getIntegerBitWidth() % 8) != 0)) {
     return;
   }
 
@@ -99,26 +106,32 @@ void swapArrayBytes(llvm::Value *ArrayPtr, llvm::Value *Count, llvm::IRBuilder<>
     ArrayType = builder.getIntNTy(TypeSize);
   }
 
-  llvm::Function *bswap = llvm::Intrinsic::getDeclaration(m, llvm::Intrinsic::bswap,
-          {ArrayType});
+  llvm::Function *bswap =
+      llvm::Intrinsic::getDeclaration(m, llvm::Intrinsic::bswap, {ArrayType});
 
   llvm::Function *ParentFunc = builder.GetInsertBlock()->getParent();
   llvm::BasicBlock *PrevBlock = builder.GetInsertBlock();
 
-  llvm::BasicBlock *loopBlock = llvm::BasicBlock::Create(m->getContext(), "byteswap_loop_" + ParentFunc->getName(), ParentFunc);
-  llvm::BasicBlock *nextBlock = llvm::BasicBlock::Create(m->getContext(), "", ParentFunc);
+  llvm::BasicBlock *loopBlock = llvm::BasicBlock::Create(
+      m->getContext(), "byteswap_loop_" + ParentFunc->getName(), ParentFunc);
+  llvm::BasicBlock *nextBlock =
+      llvm::BasicBlock::Create(m->getContext(), "", ParentFunc);
   builder.CreateBr(loopBlock);
   builder.SetInsertPoint(loopBlock);
 
   llvm::PHINode *loopIter = builder.CreatePHI(Count->getType(), 2);
-  loopIter->addIncoming(builder.CreateBitCast(builder.getInt64(0), Count->getType()), PrevBlock);
+  loopIter->addIncoming(
+      builder.CreateBitCast(builder.getInt64(0), Count->getType()), PrevBlock);
 
   llvm::Value *ElementGEP = builder.CreateGEP(ArrayPtr, loopIter);
-  llvm::Value *ArrayElement = builder.CreateBitCast(builder.CreateLoad(ElementGEP), ArrayType);
-  llvm::Value *SwappedElement = builder.CreateBitCast(builder.CreateCall(bswap, {ArrayElement}), PrevArrayType);
+  llvm::Value *ArrayElement =
+      builder.CreateBitCast(builder.CreateLoad(ElementGEP), ArrayType);
+  llvm::Value *SwappedElement = builder.CreateBitCast(
+      builder.CreateCall(bswap, {ArrayElement}), PrevArrayType);
   builder.CreateStore(SwappedElement, ElementGEP);
 
-  llvm::Value *loopNextIter = builder.CreateAdd(builder.CreateBitCast(builder.getInt64(1), Count->getType()), loopIter);
+  llvm::Value *loopNextIter = builder.CreateAdd(
+      builder.CreateBitCast(builder.getInt64(1), Count->getType()), loopIter);
   llvm::Value *loopEnd = builder.CreateICmpEQ(loopNextIter, Count);
   // If the next iteration is equal to the loop end then break out
   builder.CreateCondBr(loopEnd, nextBlock, loopBlock);
@@ -128,10 +141,14 @@ void swapArrayBytes(llvm::Value *ArrayPtr, llvm::Value *Count, llvm::IRBuilder<>
 }
 } // namespace
 
-tyr::visitor::LLVMVisitor::LLVMVisitor(llvm::Module *Parent)
+tyr::pass::LLVMCodegenPass::LLVMCodegenPass(llvm::Module *Parent)
     : m_parent_(Parent) {}
 
-bool tyr::visitor::LLVMVisitor::visitStruct(const tyr::ir::Struct &s) {
+std::string tyr::pass::LLVMCodegenPass::getName() {
+  return "LLVMCodegenPass";
+}
+
+bool tyr::pass::LLVMCodegenPass::runOnStruct(const tyr::ir::Struct &s) {
   if (!getConstructor(&s)) {
     llvm::errs() << "Get constructor failed for struct "
                  << s.getType()->getName() << " aborting\n";
@@ -155,13 +172,14 @@ bool tyr::visitor::LLVMVisitor::visitStruct(const tyr::ir::Struct &s) {
   return true;
 }
 
-bool tyr::visitor::LLVMVisitor::visitField(const tyr::ir::Field &f) {
+bool tyr::pass::LLVMCodegenPass::runOnField(const tyr::ir::Field &f) {
   if (!getGetter(&f)) {
     llvm::errs() << "Get getter failed for field " << f.name << " aborting\n";
     return false;
   }
   if (!getItemGetter(&f)) {
-    llvm::errs() << "Get item getter failed for field " << f.name << " aborting\n";
+    llvm::errs() << "Get item getter failed for field " << f.name
+                 << " aborting\n";
     return false;
   }
   if (!getSetter(&f)) {
@@ -186,7 +204,7 @@ bool tyr::visitor::LLVMVisitor::visitField(const tyr::ir::Field &f) {
 }
 
 llvm::Value *
-tyr::visitor::LLVMVisitor::getFieldAllocSize(const tyr::ir::Field *f,
+tyr::pass::LLVMCodegenPass::getFieldAllocSize(const tyr::ir::Field *f,
                                              llvm::Value *Struct,
                                              llvm::IRBuilder<> &builder) const {
   const llvm::DataLayout &DL = m_parent_->getDataLayout();
@@ -199,13 +217,11 @@ tyr::visitor::LLVMVisitor::getFieldAllocSize(const tyr::ir::Field *f,
     return builder.CreateMul(builder.getInt64(FieldAllocSize),
                              builder.CreateLoad(CountGEP));
   }
-  // Only need to special-case arrays, if it's a struct then we're just holding
-  // a pointer to it
 
   return builder.getInt64(DL.getTypeAllocSize(f->type));
 }
 
-bool tyr::visitor::LLVMVisitor::initField(const tyr::ir::Field *f,
+bool tyr::pass::LLVMCodegenPass::initField(const tyr::ir::Field *f,
                                           llvm::Value *Struct,
                                           llvm::Argument *Arg,
                                           llvm::IRBuilder<> &builder) {
@@ -251,7 +267,7 @@ bool tyr::visitor::LLVMVisitor::initField(const tyr::ir::Field *f,
   return true;
 }
 
-bool tyr::visitor::LLVMVisitor::destroyField(const tyr::ir::Field *f,
+bool tyr::pass::LLVMCodegenPass::destroyField(const tyr::ir::Field *f,
                                              llvm::Value *Struct,
                                              llvm::IRBuilder<> &builder) {
   llvm::Value *FieldGEP = builder.CreateStructGEP(Struct, f->offset);
@@ -268,7 +284,7 @@ bool tyr::visitor::LLVMVisitor::destroyField(const tyr::ir::Field *f,
   return true;
 }
 
-bool tyr::visitor::LLVMVisitor::getGetter(const ir::Field *f) const {
+bool tyr::pass::LLVMCodegenPass::getGetter(const ir::Field *f) const {
   const uint32_t AddrSpace =
       m_parent_->getDataLayout().getProgramAddressSpace();
 
@@ -326,7 +342,7 @@ bool tyr::visitor::LLVMVisitor::getGetter(const ir::Field *f) const {
     builder.CreateStore(DeserializedField, OutVal);
     builder.CreateRet(builder.getInt1(true));
     return true;
-  } else if (f->type->isPointerTy() && !f->mut) {
+  } else if (f->isRepeated && !f->mut) {
     llvm::Value *FieldAllocSize = getFieldAllocSize(f, Self, builder);
 
     llvm::Value *AllocdMem =
@@ -353,13 +369,13 @@ bool tyr::visitor::LLVMVisitor::getGetter(const ir::Field *f) const {
   return true;
 }
 
-bool tyr::visitor::LLVMVisitor::getItemGetter(const tyr::ir::Field *f) const {
-  if (!f->type->isPointerTy() || f->isStruct) { // Not an array
+bool tyr::pass::LLVMCodegenPass::getItemGetter(const tyr::ir::Field *f) const {
+  if (!f->isRepeated) { // Not an array
     return true;
   }
 
   const uint32_t AddrSpace =
-          m_parent_->getDataLayout().getProgramAddressSpace();
+      m_parent_->getDataLayout().getProgramAddressSpace();
 
   llvm::Type *StructPtrType = f->parentType->getPointerTo(AddrSpace);
 
@@ -367,16 +383,16 @@ bool tyr::visitor::LLVMVisitor::getItemGetter(const tyr::ir::Field *f) const {
   llvm::LLVMContext &ctx = m_parent_->getContext();
 
   std::string GetterName =
-          "get_" + std::string(f->parentType->getName()) + "_" + f->name + "_item";
+      "get_" + std::string(f->parentType->getName()) + "_" + f->name + "_item";
 
   // Getter returns bool, takes an index, and returns the element by reference
   llvm::FunctionType *GetterType = llvm::FunctionType::get(
-          llvm::Type::getInt1Ty(ctx),
-          {StructPtrType, llvm::Type::getInt64Ty(ctx), f->type}, false);
+      llvm::Type::getInt1Ty(ctx),
+      {StructPtrType, llvm::Type::getInt64Ty(ctx), f->type}, false);
 
   // Create the function
   llvm::Function *Getter = llvm::cast<llvm::Function>(
-          m_parent_->getOrInsertFunction(GetterName, GetterType));
+      m_parent_->getOrInsertFunction(GetterName, GetterType));
   llvm::BasicBlock *GetterBlock = llvm::BasicBlock::Create(ctx, "", Getter);
   llvm::IRBuilder<> builder(GetterBlock);
 
@@ -389,7 +405,7 @@ bool tyr::visitor::LLVMVisitor::getItemGetter(const tyr::ir::Field *f) const {
 
   // Make sure it's not NULL
   llvm::BasicBlock *SelfIsNotNull = insertNullCheck(
-          {Self, &*arg_iter}, builder.getInt1(false), builder, Getter);
+      {Self, &*arg_iter}, builder.getInt1(false), builder, Getter);
 
   // Handle if it's not null
   builder.SetInsertPoint(SelfIsNotNull);
@@ -423,8 +439,8 @@ bool tyr::visitor::LLVMVisitor::getItemGetter(const tyr::ir::Field *f) const {
   return true;
 }
 
-bool tyr::visitor::LLVMVisitor::getSetter(const tyr::ir::Field *f) const {
-  if (!f->mut || f->isCount) {
+bool tyr::pass::LLVMCodegenPass::getSetter(const tyr::ir::Field *f) const {
+  if (!f->mut) {
     return true;
   }
 
@@ -441,7 +457,7 @@ bool tyr::visitor::LLVMVisitor::getSetter(const tyr::ir::Field *f) const {
   // Setter returns a bool to indicate if it was successfully set (will return
   // false always if field is non-mutable)
   llvm::FunctionType *SetterType;
-  if (f->type->isPointerTy()) {
+  if (f->isRepeated) {
     // If it's a pointer type then you have to pass in the size of the array
     // you're copying
     SetterType = llvm::FunctionType::get(
@@ -493,7 +509,7 @@ bool tyr::visitor::LLVMVisitor::getSetter(const tyr::ir::Field *f) const {
         m_parent_->getFunction(FieldDeserializerName), {SerializedField});
     builder.CreateStore(DeserializedField, FieldGEP);
     builder.CreateRet(builder.getInt1(true));
-  } else if (f->type->isPointerTy()) {
+  } else if (f->isRepeated) {
     llvm::Value *PtrFieldCount =
         builder.CreateStructGEP(Self, f->countField->offset);
 
@@ -571,21 +587,63 @@ bool tyr::visitor::LLVMVisitor::getSetter(const tyr::ir::Field *f) const {
     builder.CreateStore(FinalFieldMem, FieldGEP);
 
     builder.CreateRet(builder.getInt1(true));
-  } else {
+  } else if (f->isCount) {
+    // Check if the input size is 0
+    llvm::BasicBlock *NewSizeIsZero = llvm::BasicBlock::Create(ctx, "", Setter);
+    llvm::BasicBlock *NewSizeIsNotZero = llvm::BasicBlock::Create(ctx, "", Setter);
+    llvm::Value *InputSizeIsZero = builder.CreateICmpEQ(ToInsert, builder.CreateBitCast(builder.getInt64(0), f->type));
+    builder.CreateCondBr(InputSizeIsZero, NewSizeIsZero, NewSizeIsNotZero);
+
+    // And return false if it is
+    builder.SetInsertPoint(NewSizeIsZero);
+    builder.CreateRet(builder.getInt1(false));
+
+    // Otherwise, continue
+    builder.SetInsertPoint(NewSizeIsNotZero);
+
+    // Store the new size
+    llvm::Value *LoadedCount = builder.CreateLoad(FieldGEP);
+    builder.CreateStore(ToInsert, FieldGEP);
+
+    // Load the repeated field
+    llvm::Value *RepeatedFieldGEP = builder.CreateStructGEP(Self, f->countsFor->offset);
+    llvm::Value *LoadedRepeatedField = builder.CreateLoad(RepeatedFieldGEP);
+    // Realloc to set the size
+    llvm::Value *ReallocFieldMem = builder.CreateCall(
+            m_parent_->getFunction("realloc"),
+            {builder.CreateBitCast(LoadedRepeatedField, builder.getInt8PtrTy(AddrSpace)),
+             getFieldAllocSize(f->countsFor, Self, builder)});
+    // Replace the old size just in case
+    builder.CreateStore(LoadedCount, FieldGEP);
+
+    // Exit block
+    llvm::BasicBlock *SizeIsRight = llvm::BasicBlock::Create(ctx, "", Setter);
+
+    // Cast to the right type
+    ReallocFieldMem = builder.CreateBitCast(ReallocFieldMem, f->countsFor->type);
+    // Make sure realloc succeeded
+    (void)insertNullCheck({ReallocFieldMem}, builder.getInt1(false), builder,
+                          Setter, SizeIsRight);
+
+    builder.SetInsertPoint(SizeIsRight);
+    builder.CreateStore(ReallocFieldMem, RepeatedFieldGEP);
     builder.CreateStore(ToInsert, FieldGEP);
     builder.CreateRet(builder.getInt1(true));
+  } else {
+      builder.CreateStore(ToInsert, FieldGEP);
+      builder.CreateRet(builder.getInt1(true));
   }
 
   return true;
 }
 
-bool tyr::visitor::LLVMVisitor::getItemSetter(const tyr::ir::Field *f) const {
-  if (!f->type->isPointerTy() || f->isStruct) { // not an array
+bool tyr::pass::LLVMCodegenPass::getItemSetter(const tyr::ir::Field *f) const {
+  if (!f->isRepeated) { // not an array
     return true;
   }
 
   const uint32_t AddrSpace =
-          m_parent_->getDataLayout().getProgramAddressSpace();
+      m_parent_->getDataLayout().getProgramAddressSpace();
 
   llvm::Type *StructPtrType = f->parentType->getPointerTo(AddrSpace);
 
@@ -593,16 +651,18 @@ bool tyr::visitor::LLVMVisitor::getItemSetter(const tyr::ir::Field *f) const {
   llvm::LLVMContext &ctx = m_parent_->getContext();
 
   std::string SetterName =
-          "set_" + std::string(f->parentType->getName()) + "_" + f->name + "_item";
+      "set_" + std::string(f->parentType->getName()) + "_" + f->name + "_item";
 
   // Setter returns bool, takes an index and the item to store
-  llvm::FunctionType *SetterType = llvm::FunctionType::get(
-          llvm::Type::getInt1Ty(ctx),
-          {StructPtrType, llvm::Type::getInt64Ty(ctx), f->type->getPointerElementType()}, false);
+  llvm::FunctionType *SetterType =
+      llvm::FunctionType::get(llvm::Type::getInt1Ty(ctx),
+                              {StructPtrType, llvm::Type::getInt64Ty(ctx),
+                               f->type->getPointerElementType()},
+                              false);
 
   // Create the function
   llvm::Function *Setter = llvm::cast<llvm::Function>(
-          m_parent_->getOrInsertFunction(SetterName, SetterType));
+      m_parent_->getOrInsertFunction(SetterName, SetterType));
   llvm::BasicBlock *SetterBlock = llvm::BasicBlock::Create(ctx, "", Setter);
   llvm::IRBuilder<> builder(SetterBlock);
 
@@ -614,8 +674,8 @@ bool tyr::visitor::LLVMVisitor::getItemSetter(const tyr::ir::Field *f) const {
   ++arg_iter;
 
   // Make sure Self not NULL
-  llvm::BasicBlock *SelfIsNotNull = insertNullCheck(
-          {Self}, builder.getInt1(false), builder, Setter);
+  llvm::BasicBlock *SelfIsNotNull =
+      insertNullCheck({Self}, builder.getInt1(false), builder, Setter);
 
   // Handle if it's not null
   builder.SetInsertPoint(SelfIsNotNull);
@@ -646,21 +706,20 @@ bool tyr::visitor::LLVMVisitor::getItemSetter(const tyr::ir::Field *f) const {
   builder.CreateRet(builder.getInt1(true));
 
   return true;
-
 }
 
 std::string
-tyr::visitor::LLVMVisitor::getSerializerName(const tyr::ir::Field *f) const {
+tyr::pass::LLVMCodegenPass::getSerializerName(const tyr::ir::Field *f) const {
   return "__serialize_" + std::string(f->parentType->getName()) + "_" + f->name;
 }
 
 std::string
-tyr::visitor::LLVMVisitor::getDeserializerName(const tyr::ir::Field *f) const {
+tyr::pass::LLVMCodegenPass::getDeserializerName(const tyr::ir::Field *f) const {
   return "__deserialize_" + std::string(f->parentType->getName()) + "_" +
          f->name;
 }
 
-bool tyr::visitor::LLVMVisitor::getSerializer(const tyr::ir::Field *f) const {
+bool tyr::pass::LLVMCodegenPass::getSerializer(const tyr::ir::Field *f) const {
   if (f->isCount) { // Don't serialize count fields
     return true;
   }
@@ -760,7 +819,7 @@ bool tyr::visitor::LLVMVisitor::getSerializer(const tyr::ir::Field *f) const {
   return true;
 }
 
-bool tyr::visitor::LLVMVisitor::getDeserializer(const tyr::ir::Field *f) const {
+bool tyr::pass::LLVMCodegenPass::getDeserializer(const tyr::ir::Field *f) const {
   if (f->isCount) { // Don't serialize count fields
     return true;
   }
@@ -818,7 +877,8 @@ bool tyr::visitor::LLVMVisitor::getDeserializer(const tyr::ir::Field *f) const {
     // Get the count first
     llvm::Value *CastedCurrentPtr = builder.CreateBitCast(
         CurrentPtr, f->countField->type->getPointerTo(AddrSpace));
-    llvm::Value *Count = swapBytes(builder.CreateLoad(CastedCurrentPtr), builder);
+    llvm::Value *Count =
+        swapBytes(builder.CreateLoad(CastedCurrentPtr), builder);
     // Store the count into Self
     builder.CreateStore(Count,
                         builder.CreateStructGEP(Self, f->countField->offset));
@@ -858,7 +918,8 @@ bool tyr::visitor::LLVMVisitor::getDeserializer(const tyr::ir::Field *f) const {
     // Just store the data
     llvm::Value *CastedCurrentPtr =
         builder.CreateBitCast(CurrentPtr, f->type->getPointerTo(AddrSpace));
-    llvm::Value *FieldData = swapBytes(builder.CreateLoad(CastedCurrentPtr), builder);
+    llvm::Value *FieldData =
+        swapBytes(builder.CreateLoad(CastedCurrentPtr), builder);
     OutSize = getFieldAllocSize(f, Self, builder);
     builder.CreateStore(FieldData, builder.CreateStructGEP(Self, f->offset));
   }
@@ -869,12 +930,12 @@ bool tyr::visitor::LLVMVisitor::getDeserializer(const tyr::ir::Field *f) const {
 }
 
 uint64_t
-tyr::visitor::LLVMVisitor::getStructAllocSize(const tyr::ir::Struct *s) {
+tyr::pass::LLVMCodegenPass::getStructAllocSize(const tyr::ir::Struct *s) {
   const llvm::DataLayout &DL = m_parent_->getDataLayout();
   return DL.getTypeAllocSize(s->getType());
 }
 
-bool tyr::visitor::LLVMVisitor::getConstructor(const tyr::ir::Struct *s) {
+bool tyr::pass::LLVMCodegenPass::getConstructor(const tyr::ir::Struct *s) {
   llvm::ArrayRef<ir::FieldPtr> structFields = s->getFields();
 
   std::vector<llvm::Type *> NonMutFields;
@@ -937,7 +998,7 @@ bool tyr::visitor::LLVMVisitor::getConstructor(const tyr::ir::Struct *s) {
   return true;
 }
 
-bool tyr::visitor::LLVMVisitor::getDestructor(const tyr::ir::Struct *s) {
+bool tyr::pass::LLVMCodegenPass::getDestructor(const tyr::ir::Struct *s) {
   llvm::ArrayRef<ir::FieldPtr> structFields = s->getFields();
   llvm::LLVMContext &ctx = m_parent_->getContext();
 
@@ -972,7 +1033,7 @@ bool tyr::visitor::LLVMVisitor::getDestructor(const tyr::ir::Struct *s) {
   return true;
 }
 
-bool tyr::visitor::LLVMVisitor::getSerializer(const tyr::ir::Struct *s) {
+bool tyr::pass::LLVMCodegenPass::getSerializer(const tyr::ir::Struct *s) {
   llvm::ArrayRef<ir::FieldPtr> structFields = s->getFields();
   llvm::LLVMContext &ctx = m_parent_->getContext();
 
@@ -1024,10 +1085,12 @@ bool tyr::visitor::LLVMVisitor::getSerializer(const tyr::ir::Struct *s) {
       Serializer);
   builder.SetInsertPoint(MallocSucceeded);
 
-  // Store the total size of the struct, swap the bytes in the total size if necessary
+  // Store the total size of the struct, swap the bytes in the total size if
+  // necessary
   builder.CreateStore(
-      swapBytes(AllocSize, builder), builder.CreateBitCast(
-                     AllocdMem, builder.getInt64Ty()->getPointerTo(AddrSpace)));
+      swapBytes(AllocSize, builder),
+      builder.CreateBitCast(AllocdMem,
+                            builder.getInt64Ty()->getPointerTo(AddrSpace)));
 
   llvm::Value *CurrentIDX = builder.getInt64(8);
   for (auto &entry : structFields) {
@@ -1047,7 +1110,7 @@ bool tyr::visitor::LLVMVisitor::getSerializer(const tyr::ir::Struct *s) {
   return true;
 }
 
-bool tyr::visitor::LLVMVisitor::getDeserializer(const tyr::ir::Struct *s) {
+bool tyr::pass::LLVMCodegenPass::getDeserializer(const tyr::ir::Struct *s) {
   llvm::ArrayRef<ir::FieldPtr> structFields = s->getFields();
   llvm::LLVMContext &ctx = m_parent_->getContext();
 
@@ -1076,8 +1139,10 @@ bool tyr::visitor::LLVMVisitor::getDeserializer(const tyr::ir::Struct *s) {
       ->addAttr(llvm::Attribute::AttrKind::ReadOnly);
 
   // Swap the bytes in the total size if necessary
-  llvm::Value *SerializedSize = swapBytes(builder.CreateLoad(builder.CreateBitCast(
-      SerializedSelf, builder.getInt64Ty()->getPointerTo(AddrSpace))), builder);
+  llvm::Value *SerializedSize = swapBytes(
+      builder.CreateLoad(builder.CreateBitCast(
+          SerializedSelf, builder.getInt64Ty()->getPointerTo(AddrSpace))),
+      builder);
 
   // Check if the args are invalid
   llvm::BasicBlock *IsNotNull = insertNullCheck(

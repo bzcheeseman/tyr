@@ -23,7 +23,7 @@
 #ifndef TYR_CODEGENVISITOR_HPP
 #define TYR_CODEGENVISITOR_HPP
 
-#include "Visitor.hpp"
+#include "Pass.hpp"
 
 #include <llvm/IR/IRBuilder.h>
 
@@ -41,13 +41,14 @@ class Struct;
 class Field;
 } // namespace ir
 
-namespace visitor {
-class LLVMVisitor : public ir::Visitor {
+namespace pass {
+class LLVMCodegenPass : public ir::Pass {
 public:
-  explicit LLVMVisitor(llvm::Module *Parent);
+  explicit LLVMCodegenPass(llvm::Module *Parent);
 
-  bool visitStruct(const ir::Struct &s) override;
-  bool visitField(const ir::Field &f) override;
+  std::string getName() override;
+  bool runOnStruct(const ir::Struct &s) override;
+  bool runOnField(const ir::Field &f) override;
 
 private:
   llvm::Value *getFieldAllocSize(const ir::Field *f, llvm::Value *Struct,
@@ -79,7 +80,7 @@ private:
   llvm::Module *m_parent_ = nullptr;
 };
 
-} // namespace visitor
+} // namespace pass
 } // namespace tyr
 
 #endif // TYR_CODEGENVISITOR_HPP

@@ -31,7 +31,7 @@ void destroy_path(path_ptr);
 ```
 in the form of either an LLVM bitcode file or an object file. It also generates bindings 
 for using the generated  object in one of the supported languages. Currently, we support 
-`C` (by generating a header file) and `Python` via the `cffi` library.
+`C` by generating a header file.
 
 Most tyr generated function returns `true` on success and `false` on error. The getters return by 
 reference to accommodate this pattern. If the function returns a pointer, it will be NULL on failure.
@@ -46,9 +46,7 @@ standard library installed (so pretty much any Unix system).
 
 tyr also ships with a small runtime of supporting libraries. These are designed to be lightweight
 and POSIX compliant, so they should also run anywhere that has the C standard library. They are
-disabled by default because tyr is designed to be lightweight and non-intrusive. They can be
-enabled by passing the `-link-rt` flag to the tyr compiler, in which case it will compile the 
-runtime functions directly into the tyr-generated code.
+enabled by default but they can be disabled by passing the `-no-link-rt` flag to the tyr compiler.
 
 ## How to contribute
 Literally anywhere you see the need. The bullets in the Roadmap section are a great place
@@ -87,12 +85,6 @@ docker run -v $(pwd):/opt/local tyrc:latest bash -c "tyr /opt/local/<filename> -
 llvm == 7.0 (brew install llvm) <- also installs clang-format
 ```
 
-## Requirements for using the Python bindings
-```
-cffi >= 1.11.5
-numpy >= 1.10 (not exact, just use something recent-ish)
-```
-
 ## Build (and install)
 ```
 cd /path/to/tyr
@@ -107,23 +99,9 @@ cd /path/to/tyr/build
 make c_test && ./test/c_test
 ```
 
-## Running the integration tests (Python)
-```bash
-cd /path/to/tyr/build
-make python_test
-```
-
-## Running the integration tests (Cross language)
-```bash
-cd /path/to/tyr/build
-make x_lang_test
-```
-
-
-
 ## Roadmap (in no particular order)
+- Non-C language support
 - Function serialization?
 - Bit-accurate structs as packed ints
 - Add map support
 - Code cleanup + refactoring (constant process)
-- Use the new IR to generate the bindings
