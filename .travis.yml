@@ -9,7 +9,7 @@ osx_image: xcode10.1
 addons:
   homebrew:
     packages:
-      - llvm
+      - llvm@7
       - cmake
     update: true
 
