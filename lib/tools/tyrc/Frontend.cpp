@@ -28,7 +28,7 @@
 
 #include <Module.hpp>
 #include <Parser.hpp>
-#include <LLVMIRCodeGen/LLVMIRGenPass.hpp>
+#include <LLVMIRGen/LLVMIRGenPass.hpp>
 #include <LLVMCodegenPass/LLVMCodegenPass.hpp>
 #include <ObjectCodegenPass/ObjectCodegenPass.hpp>
 #include <BindingCodeGen/CCodegenPass.hpp>

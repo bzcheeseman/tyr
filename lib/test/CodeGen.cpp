@@ -32,10 +32,10 @@
 #include <llvm/Support/TargetRegistry.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
-#include <LLVMIRCodeGen/LLVMIRGenPass.hpp>
 
 #include "Module.hpp"
 #include "IR.hpp"
+#include "LLVMIRGen/LLVMIRGenPass.hpp"
 
 namespace {
 
