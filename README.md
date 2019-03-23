@@ -6,28 +6,29 @@ tyr is a data structure compiler. It takes declarations like this
 struct path {
   mutable repeated float x
   mutable repeated float y
-  int64 idx
+  int32 idx
 }
 ```
 and compiles them into functions like this
 ```c
-typedef void *path_ptr
+typedef struct path path_t;
 
-bool get_path_idx(path_ptr, uint32_t *); // no setter because it's immutable
-bool get_path_x_count(path_ptr, uint64_t *);
-bool get_path_x(path_ptr, float * *);
-bool get_path_x_item(path_ptr, uint64_t, float *);
-bool set_path_x(path_ptr, float *, uint64_t);
-bool set_path_x_item(path_ptr, uint64_t, float);
-bool get_path_y_count(path_ptr, uint64_t *);
-bool get_path_y(path_ptr, float * *);
-bool get_path_y_item(path_ptr, uint64_t, float *);
-bool set_path_y(path_ptr, float *, uint64_t);
-bool set_path_y_item(path_ptr, uint64_t, float);
-path_ptr create_path(uint32_t); // immutable fields need to be passed into the constructor
-uint8_t * serialize_path(path_ptr);
-path_ptr deserialize_path(uint8_t *);
-void destroy_path(path_ptr);
+bool get_path_idx(path_t *struct_ptr, uint32_t *idx);
+bool get_path_x(path_t *struct_ptr, float **x);
+bool set_path_x(path_t *struct_ptr, float *x, uint64_t x_count);
+bool get_path_x_item(path_t *struct_ptr, uint64_t idx, float *x_item);
+bool set_path_x_item(path_t *struct_ptr, uint64_t idx, float x_item);
+bool get_path_x_count(path_t *struct_ptr, uint64_t *count);
+bool get_path_y(path_t *struct_ptr, float **y);
+bool set_path_y(path_t *struct_ptr, float *y, uint64_t y_count);
+bool get_path_y_item(path_t *struct_ptr, uint64_t idx, float *y_item);
+bool set_path_y_item(path_t *struct_ptr, uint64_t idx, float y_item);
+bool get_path_y_count(path_t *struct_ptr, uint64_t *count);
+path_t * create_path(uint32_t idx);
+void destroy_path(path_t *struct_ptr);
+typedef void *path_ptr;
+uint8_t *serialize_path(path_ptr struct_ptr);
+path_ptr deserialize_path(uint8_t *serialized_struct);
 ```
 in the form of either an LLVM bitcode file or an object file. It also generates bindings 
 for using the generated  object in one of the supported languages. Currently, we support 
