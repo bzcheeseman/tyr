@@ -25,8 +25,8 @@
 #include "IR.hpp"
 #include "Module.hpp"
 
-#include <llvm/Support/Path.h>
 #include <llvm/Support/FileSystem.h>
+#include <llvm/Support/Path.h>
 #include <llvm/Support/raw_ostream.h>
 
 namespace {
@@ -48,7 +48,9 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &out, const llvm::Type *Ty) {
     case 64:
       out << "uint64_t ";
       break;
-    default: { break; }
+    default: {
+      break;
+    }
     }
   } else if (Ty->isFloatingPointTy()) {
     if (Ty->isFloatTy()) {
@@ -99,7 +101,7 @@ bool tyr::pass::CCodegenPass::runOnModule(tyr::Module &m) {
   out << "#include <stdbool.h>\n"
          "#include <stdint.h>\n";
 
-  // Link runtime
+  // Link Runtime
   out << "#include <tyr/rt/FileHelper.h>\n";
   out << "\n";
 

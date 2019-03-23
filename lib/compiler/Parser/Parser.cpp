@@ -55,7 +55,7 @@ bool tyr::Parser::parseFile(std::istream &input) {
   bool insideComment = false;
   std::string l;
   while (std::getline(input, l)) {
-    std::istringstream line {l};
+    std::istringstream line{l};
     std::vector<std::string> tokens{std::istream_iterator<std::string>{line},
                                     std::istream_iterator<std::string>{}};
 

@@ -33,9 +33,9 @@
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
 
-#include "Module.hpp"
 #include "IR.hpp"
 #include "LLVMIRGen/LLVMIRGenPass.hpp"
+#include "Module.hpp"
 
 namespace {
 

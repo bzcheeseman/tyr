@@ -22,10 +22,10 @@
 
 #include "Module.hpp"
 
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/Module.h>
 #include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Module.h>
 #include <llvm/Linker/Linker.h>
 #include <llvm/Support/Path.h>
 
@@ -182,7 +182,7 @@ llvm::ExecutionEngine *tyr::getExecutionEngine(llvm::Module *Parent) {
 
   std::string error_str;
 
-  llvm::EngineBuilder engineBuilder {llvm::CloneModule(*Parent)};
+  llvm::EngineBuilder engineBuilder{llvm::CloneModule(*Parent)};
   engineBuilder.setErrorStr(&error_str);
   engineBuilder.setEngineKind(llvm::EngineKind::Either);
   llvm::ExecutionEngine *engine = engineBuilder.create();
