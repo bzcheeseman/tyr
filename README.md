@@ -83,7 +83,7 @@ docker run -v $(pwd):/opt/local tyrc:latest bash -c "tyr /opt/local/<filename> -
 
 ## Requirements for building tyr
 ```
-llvm == 7.0 (brew install llvm) <- also installs clang-format
+llvm == 8.0 (brew install llvm) <- also installs clang-format
 ```
 
 ## Build (and install)
