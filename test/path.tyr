@@ -1,19 +1,32 @@
-struct path {
+/*
+ * tyr uses C-style comments - so this is a block comment
+ */
+
+// And this is a line comment
+
+struct path packed {
+  // X coord
   mutable repeated float x
-  mutable repeated float y
+  // Y coord
+  repeated mutable float y
+  // Path IDX
   int32 idx
 }
 
 struct node {
+  // Each node has an immutable identifier
   int16 id
+  // And a list of data points
   repeated int64 data
 }
 
+// Edges are immutable because they can be
 struct edge {
   int16 src
   int16 sink
 }
 
+// Graphs are made up of nodes and edges
 struct graph {
   mutable repeated node
   mutable repeated edge

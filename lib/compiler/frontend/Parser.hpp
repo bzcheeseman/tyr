@@ -24,7 +24,6 @@
 #define TYR_PARSER_HPP
 
 #include <istream>
-#include <sstream>
 
 namespace tyr {
 
@@ -50,7 +49,7 @@ public:
   bool parseFile(std::istream &input);
 
 private:
-  bool parseLine(std::istringstream &input);
+  bool parseLine(const std::vector<std::string> &tokens);
 
 private:
   ir::Struct *m_current_struct_;

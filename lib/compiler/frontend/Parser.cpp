@@ -24,24 +24,10 @@
 
 #include "Module.hpp"
 
+#include <sstream>
+
 tyr::Parser::Parser(tyr::Module &generator)
     : m_generator_(generator), m_current_struct_(nullptr) {}
-
-bool tyr::Parser::parseFile(std::istream &input) {
-  std::string line;
-  uint64_t lineno = 0;
-  while (std::getline(input, line)) {
-    if (!line.empty()) {
-      std::istringstream iss(line);
-      if (!parseLine(iss)) {
-        llvm::errs() << "Failed to parse line " << lineno << "\n";
-        return false;
-      }
-      ++lineno;
-    }
-  }
-  return true;
-}
 
 namespace {
 bool addField(tyr::Module &m, const std::string &StructName, bool IsMutable,
@@ -64,21 +50,52 @@ bool addField(tyr::Module &m, const std::string &StructName, bool IsMutable,
 }
 } // namespace
 
-bool tyr::Parser::parseLine(std::istringstream &input) {
-  std::vector<std::string> tokens{std::istream_iterator<std::string>{input},
-                                  std::istream_iterator<std::string>{}};
+bool tyr::Parser::parseFile(std::istream &input) {
+  uint64_t lineno = 0;
+  bool insideComment = false;
+  std::string l;
+  while (std::getline(input, l)) {
+    std::istringstream line {l};
+    std::vector<std::string> tokens{std::istream_iterator<std::string>{line},
+                                    std::istream_iterator<std::string>{}};
 
-  // Don't freak out on an empty line
-  if (tokens.empty()) {
-    return true;
+    if (tokens.empty()) { // nothing on that line
+      continue;
+    }
+
+    if (tokens[0] == "//") { // line comment
+      continue;
+    }
+
+    if (tokens[0] == "/*") { // block comment
+      insideComment = true;
+      continue;
+    }
+
+    if (tokens[0] == "*/") { // end block comment
+      insideComment = false;
+      continue;
+    }
+
+    if (!insideComment) {
+      if (!parseLine(tokens)) {
+        llvm::errs() << "Failed to parse line " << lineno << "\n";
+        return false;
+      }
+    }
+
+    ++lineno;
   }
+  return true;
+}
 
+bool tyr::Parser::parseLine(const std::vector<std::string> &tokens) {
   if (tokens[0] == "struct") {
     if (m_current_struct_ != nullptr) {
       llvm::errs() << "tyr doesn't support nested struct declarations\n";
       return false;
     }
-    std::string &StructName = tokens[1];
+    const std::string &StructName = tokens[1];
     m_current_struct_ = m_generator_.getOrCreateStruct(StructName);
     m_current_struct_->setIsPacked(tokens.size() == 3 && tokens[2] == "packed");
     return true;
@@ -94,7 +111,7 @@ bool tyr::Parser::parseLine(std::istringstream &input) {
   bool IsRepeated = false;
   std::string FieldTy;
 
-  if (tokens[0] == "mutable") {
+  if (tokens[0] == "mutable" || tokens[1] == "mutable") {
     IsMut = true;
   }
 

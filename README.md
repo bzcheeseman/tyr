@@ -37,6 +37,34 @@ for using the generated  object in one of the supported languages. Currently, we
 Most tyr generated function returns `true` on success and `false` on error. The getters return by 
 reference to accommodate this pattern. If the function returns a pointer, it will be NULL on failure.
 
+## Syntax
+Reserved keywords:
+```
+struct
+packed
+
+mutable
+repeated
+```
+
+Struct definitions should be structured like the following, where a keyword enclosed by `< >`
+means that it's optional.
+```
+// this is a line comment
+
+/*
+ * this is a block comment
+ */
+
+struct name <packed> {
+  <mutable> <repeated> <type> field
+}
+```
+Notes:
+ - Fields may be `mutable repeated` or `repeated mutable`. There is no difference.
+ - Fields may appear in any order; `tyr` reserves the right to re-order the fields to better pack the 
+ structure in memory.
+
 ## Why use tyr?
 tyr compiles to LLVM IR directly, or even just an object file. This means that its output
 can be very small, depending on the size of your struct - the example above produces a 1.7K 
@@ -66,7 +94,8 @@ that can then be compiled into a dynamic library (as in the Python case) or just
 as a `.o` argument to `clang` or `gcc`.
 
 ## Usage
-Use `tyr -h` to show all the available options
+Use `tyr -h` to show all the available options. `tyr` uses an LLVM backend so all the LLVM-supported target triples
+are supported.
 
 ### Native
 ```bash
@@ -105,4 +134,3 @@ make c_test && ./test/c_test
 - Function serialization?
 - Bit-accurate structs as packed ints
 - Add map support
-- Code cleanup + refactoring (constant process)
