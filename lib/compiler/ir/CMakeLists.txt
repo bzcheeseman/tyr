@@ -9,4 +9,4 @@ target_link_libraries(tyr-ir PUBLIC LLVM)
 target_include_directories(tyr-ir
         PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
         PUBLIC ${LLVM_INCLUDE_DIRS}
-        )
+)

@@ -1,5 +1,5 @@
 add_gtest(CodeGen tyr-codegen)
-#add_gtest(BindGen tyr-codegen)
+#add_gtest(BindGen tyr-CodeGen)
 add_gtest(Parser tyr-frontend)
 
 file(GLOB ALL_TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)

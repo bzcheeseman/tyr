@@ -22,7 +22,10 @@
 
 #include "Parser.hpp"
 
-tyr::Parser::Parser(tyr::CodeGen &generator) : m_generator_(generator) {}
+#include "Module.hpp"
+
+tyr::Parser::Parser(tyr::Module &generator)
+    : m_generator_(generator), m_current_struct_(nullptr) {}
 
 bool tyr::Parser::parseFile(std::istream &input) {
   std::string line;
@@ -40,6 +43,27 @@ bool tyr::Parser::parseFile(std::istream &input) {
   return true;
 }
 
+namespace {
+bool addField(tyr::Module &m, const std::string &StructName, bool IsMutable,
+              bool IsRepeated, std::string FieldType, std::string FieldName) {
+  llvm::Type *FT = m.parseType(std::move(FieldType), IsRepeated);
+  if (FT == nullptr) {
+    return false;
+  }
+
+  // TODO: handle map fields
+  if (IsRepeated) {
+    m.getOrCreateStruct(StructName)
+        ->addRepeatedField(std::move(FieldName), FT, IsMutable);
+  } else {
+    m.getOrCreateStruct(StructName)
+        ->addField(std::move(FieldName), FT, IsMutable);
+  }
+
+  return true;
+}
+} // namespace
+
 bool tyr::Parser::parseLine(std::istringstream &input) {
   std::vector<std::string> tokens{std::istream_iterator<std::string>{input},
                                   std::istream_iterator<std::string>{}};
@@ -50,19 +74,19 @@ bool tyr::Parser::parseLine(std::istringstream &input) {
   }
 
   if (tokens[0] == "struct") {
-    if (!m_current_struct_.empty()) {
+    if (m_current_struct_ != nullptr) {
       llvm::errs() << "tyr doesn't support nested struct declarations\n";
       return false;
     }
     std::string &StructName = tokens[1];
-    m_current_struct_ = StructName;
-    return m_generator_.newStruct(StructName,
-                                  tokens.size() == 3 && tokens[2] == "packed");
+    m_current_struct_ = m_generator_.getOrCreateStruct(StructName);
+    m_current_struct_->setIsPacked(tokens.size() == 3 && tokens[2] == "packed");
+    return true;
   }
 
   if (tokens[0] == "}") {
-    m_generator_.finalizeStruct(m_current_struct_);
-    m_current_struct_.clear();
+    m_current_struct_->finalizeFields(m_generator_.getModule());
+    m_current_struct_ = nullptr;
     return true;
   }
 
@@ -90,6 +114,6 @@ bool tyr::Parser::parseLine(std::istringstream &input) {
   }
 
   std::string FieldName = *tokens.rbegin();
-  return m_generator_.addField(m_current_struct_, IsMut, IsRepeated, FieldTy,
-                               FieldName);
+  return addField(m_generator_, m_current_struct_->getName(), IsMut, IsRepeated,
+                  FieldTy, FieldName);
 }

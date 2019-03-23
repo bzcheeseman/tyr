@@ -10,9 +10,9 @@
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
     You may obtain a copy of the License at
-    
+
         http://www.apache.org/licenses/LICENSE-2.0
-    
+
     Unless required by applicable law or agreed to in writing, software
     distributed under the License is distributed on an "AS IS" BASIS,
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,24 +20,24 @@
     limitations under the License.
  */
 
+#ifndef TYR_PASSMANAGER_HPP
+#define TYR_PASSMANAGER_HPP
 
-#include "PassManager.hpp"
+#include "Pass.hpp"
 
-#include "IR.hpp"
+#include <vector>
 
-void tyr::ir::PassManager::registerPass(tyr::ir::Pass::Ptr pass) {
-  m_passes_.push_back(std::move(pass));
-}
+namespace tyr {
+class Module;
 
-bool tyr::ir::PassManager::runOnStruct(const tyr::ir::Struct &s) {
-  bool retval = true;
-  for (auto &p : m_passes_) {
-    bool visitSuccess = s.visit(*p);
-    if (!visitSuccess) {
-      llvm::errs() << "Pass " << p->getName() << " failed";
-    }
-    retval &= visitSuccess;
-  }
+class PassManager {
+public:
+  void registerPass(ir::Pass::Ptr pass);
+  bool runOnModule(Module &m);
 
-  return retval;
-}
+private:
+  std::vector<ir::Pass::Ptr> m_passes_;
+};
+} // namespace tyr
+
+#endif // TYR_PASSMANAGER_HPP

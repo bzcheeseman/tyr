@@ -1,8 +1,8 @@
 //
-// Created by Aman LaChapelle on 12/1/18.
+// Created by Aman LaChapelle on 2019-02-12.
 //
 // tyr
-// Copyright (c) 2018 Aman LaChapelle
+// Copyright (c) 2019 Aman LaChapelle
 // Full license at tyr/LICENSE.txt
 //
 
@@ -20,42 +20,28 @@
     limitations under the License.
  */
 
-#ifndef TYR_PARSER_HPP
-#define TYR_PARSER_HPP
+#ifndef TYR_CBINDINGVISITOR_HPP
+#define TYR_CBINDINGVISITOR_HPP
 
-#include <istream>
-#include <sstream>
+#include <string>
+
+#include "Pass.hpp"
 
 namespace tyr {
-
-class Module;
-
-namespace ir {
-class Struct;
-}
-
-/*
- * This class is set up to handle things that look like
- * struct thing <packed> {
- *   mutable repeated int8 bytes
- *   int16 someint
- *   mutable float myfloat
- * }
- */
-
-class Parser {
+namespace pass {
+class CCodegenPass : public ir::Pass {
 public:
-  explicit Parser(Module &generator);
+  explicit CCodegenPass(const std::string &OutputDir);
 
-  bool parseFile(std::istream &input);
-
-private:
-  bool parseLine(std::istringstream &input);
+  std::string getName() override;
+  bool runOnModule(Module &m) override;
 
 private:
-  ir::Struct *m_current_struct_;
-  Module &m_generator_;
+  const std::string &m_output_dir_;
 };
+
+ir::Pass::Ptr createCCodegenPass(const std::string &Filename);
+} // namespace pass
 } // namespace tyr
 
-#endif // TYR_PARSER_HPP
+#endif // TYR_CBINDINGVISITOR_HPP

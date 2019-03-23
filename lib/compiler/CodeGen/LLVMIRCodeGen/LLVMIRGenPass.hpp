@@ -42,9 +42,9 @@ class Field;
 } // namespace ir
 
 namespace pass {
-class LLVMCodegenPass : public ir::Pass {
+class LLVMIRGenPass : public ir::Pass {
 public:
-  explicit LLVMCodegenPass(llvm::Module *Parent);
+  explicit LLVMIRGenPass(llvm::Module *Parent);
 
   std::string getName() override;
   bool runOnStruct(const ir::Struct &s) override;
@@ -79,6 +79,8 @@ private:
 private:
   llvm::Module *m_parent_ = nullptr;
 };
+
+ir::Pass::Ptr createLLVMIRGenPass(tyr::Module &Parent);
 
 } // namespace pass
 } // namespace tyr

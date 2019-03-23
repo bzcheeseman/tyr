@@ -20,13 +20,18 @@
     limitations under the License.
  */
 
-#include "CodeGen.hpp"
-#include "Parser.hpp"
 
 #include <fstream>
 
 #include <llvm/ADT/Triple.h>
 #include <llvm/Support/Path.h>
+
+#include <Module.hpp>
+#include <Parser.hpp>
+#include <LLVMIRCodeGen/LLVMIRGenPass.hpp>
+#include <LLVMCodegenPass/LLVMCodegenPass.hpp>
+#include <ObjectCodegenPass/ObjectCodegenPass.hpp>
+#include <BindingCodeGen/CCodegenPass.hpp>
 
 namespace {
 
@@ -52,16 +57,11 @@ cl::opt<std::string> ModuleName("module-name",
                                 cl::desc("Override the module name manually"),
                                 cl::init(""), cl::cat(tyrCompilerOptions), cl::Hidden);
 
-cl::opt<tyr::UseLang>
+cl::opt<std::string>
     BindLang("bind-lang",
-             cl::desc("Set the langauge in which to emit bindings:"),
-             cl::values(
-                     clEnumValN(tyr::kUseLangC, "c",
-                                   "Generate C bindings (header file)")
-//                     clEnumValN(tyr::kUseLangPython, "python",
-//                                   "Generate Python bindings (.py file)"),
-             ),
-             cl::cat(tyrCompilerOptions));
+             cl::desc("Set the langauge in which to emit bindings (currently only c is supported):"),
+             cl::init("c"),
+             cl::cat(tyrCompilerOptions), cl::Hidden);
 
 cl::opt<std::string> Target("target-triple", cl::desc("The target triple"),
                             cl::value_desc("triple"),
@@ -79,13 +79,12 @@ cl::opt<std::string> Features(
 cl::opt<bool> EmitLLVM("emit-llvm", cl::desc("Emit LLVM bytecode"),
                        cl::init(false));
 
-cl::opt<bool> EmitText("emit-text", cl::desc("Emit LLVM IR as text. Ignored if not used with emit-llvm."), cl::init(false));
-
 const int COULD_NOT_OPEN_FILE = -1;
 const int PARSING_FAILED = -2;
 const int CODEGEN_FAILED = -3;
 const int RT_LINKING_FAILED = -4;
 const int ADD_PASS_FAILED = -5;
+const int INVALID_ARGUMENT = -6;
 
 } // namespace
 
@@ -104,19 +103,14 @@ int main(int argc, char *argv[]) {
   // parse the module name
   std::string MN;
   if (!ModuleName.getValue().empty()) {
-    std::string MN = ModuleName.getValue();
+    MN = ModuleName.getValue();
   } else {
     MN = llvm::sys::path::stem(FN);
   }
 
   // init the generator
-  tyr::CodeGen generator{MN, Target.getValue(), CPU.getValue(),
-                         Features.getValue()};
-
-  if (!generator.addBindLangPass(BindLang.getValue())) {
-    llvm::errs() << "Failed to add a binding in that language\n";
-    return ADD_PASS_FAILED;
-  }
+  llvm::LLVMContext ctx;
+  tyr::Module module{MN, ctx};
 
   // read the file
   std::ifstream in_file{FN};
@@ -125,39 +119,48 @@ int main(int argc, char *argv[]) {
     return COULD_NOT_OPEN_FILE;
   }
 
+  // Set the source file name
+  module.setSourceFileName(FN);
+
   // parse the file
-  tyr::Parser parser{generator};
+  tyr::Parser parser{module};
   if (!parser.parseFile(in_file)) {
     llvm::errs() << "Error occurred parsing file " << FN << "\n";
     return PARSING_FAILED;
   }
 
+  // Set the target triple
+  module.setTargetTriple(Target.getValue());
+
+  // Initialize the pass manager
+  tyr::PassManager PM;
+  PM.registerPass(tyr::pass::createLLVMIRGenPass(module));
+
+  // Initialize the codegen
+  if (EmitLLVM.getValue()) {
+    PM.registerPass(tyr::pass::createLLVMCodegenPass(CPU.getValue(), Features.getValue(), OutputDir.getValue()));
+  } else {
+    PM.registerPass(tyr::pass::createObjectCodegenPass(CPU.getValue(), Features.getValue(), OutputDir.getValue()));
+  }
+
+  if (BindLang.getValue() != "c") {
+    llvm::errs() << "Unsupported binding language: " << BindLang.getValue() << "\n";
+    return INVALID_ARGUMENT;
+  }
+
+  // Initialize the C binding
+  PM.registerPass(tyr::pass::createCCodegenPass(OutputDir));
+
   // Link the runtime
-  if (!generator.linkOutsideModule(TYR_RT_BITCODE_FILE)) {
+  if (!module.linkOutsideModule(TYR_RT_BITCODE_FILE)) {
     llvm::errs() << "Error occurred linking the runtime\n";
     return RT_LINKING_FAILED;
   }
 
-  // emit the struct code
-  if (!generator.emit(EmitLLVM.getValue(), EmitText.getValue(), OutputDir.getValue())) {
-    llvm::errs() << "Error occurred emitting struct for use\n";
+  if (!PM.runOnModule(module)) {
+    llvm::errs() << "Error occurred running passes over module\n";
     return CODEGEN_FAILED;
   }
-
-  // should I compile into .so?
-//  bool ShouldCompileToDylib = (BindLang.getValue() == tyr::kUseLangPython);
-//  if (ShouldCompileToDylib) {
-//
-//    if (EmitLLVM.getValue()) {
-//      system(("cd " + OutputDir.getValue() + " && clang -flto -shared " + MN +
-//              ".bc -o libtyr_" + MN + ".so")
-//                 .c_str());
-//    } else {
-//      system(("cd " + OutputDir.getValue() + " && cc -flto -shared " + MN +
-//              ".o -o libtyr_" + MN + ".so")
-//                 .c_str());
-//    }
-//  }
 
   return 0;
 }

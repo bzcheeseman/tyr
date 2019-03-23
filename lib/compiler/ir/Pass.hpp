@@ -26,6 +26,7 @@
 #include <memory>
 
 namespace tyr {
+class Module;
 namespace ir {
 class Struct;
 struct Field;
@@ -33,12 +34,26 @@ struct Field;
 class Pass {
 public:
   virtual ~Pass() = default;
-  
+
   using Ptr = std::unique_ptr<Pass>;
 
   virtual std::string getName() = 0;
-  virtual bool runOnStruct(const Struct &s) = 0;
-  virtual bool runOnField(const Field &f) = 0;
+
+  /**
+   * Pass members are run in the following order for each module:
+   * 1. runOnField for each field of each struct in the module
+   * 2. runOnStruct for each struct in the module
+   * 3. runOnModule on the module itself.
+   *
+   * Each pass should override the method(s) it needs to perform its
+   * work.
+   */
+
+  virtual bool runOnModule(Module &m) { return true; }
+
+  virtual bool runOnStruct(const Struct &s) { return true; }
+
+  virtual bool runOnField(const Field &f) { return true; }
 };
 } // namespace ir
 } // namespace tyr

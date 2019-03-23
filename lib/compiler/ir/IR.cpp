@@ -27,8 +27,9 @@
 #include <llvm/IR/Type.h>
 #include <llvm/Support/raw_ostream.h>
 
-tyr::ir::Struct::Struct(std::string name, bool isPacked)
-    : m_name_(std::move(name)), m_packed_(isPacked) {}
+tyr::ir::Struct::Struct(std::string name) : m_name_(std::move(name)) {}
+
+void tyr::ir::Struct::setIsPacked(bool isPacked) { m_packed_ = isPacked; }
 
 void tyr::ir::Struct::addField(std::string name, llvm::Type *type,
                                bool isMutable) {
@@ -129,21 +130,21 @@ const std::string &tyr::ir::Struct::getName() const { return m_name_; }
 
 llvm::StructType *tyr::ir::Struct::getType() const { return m_type_; }
 
-bool tyr::ir::Struct::visit(tyr::ir::Pass &visitor) const {
-  bool success = true;
-  for (auto &field : m_fields_) {
-    bool visitSuccess = visitor.runOnField(*field);
-    if (!visitSuccess) {
-      llvm::errs() << "Visiting field " << field->name << " failed";
-    }
-    success &= visitSuccess;
-  }
+llvm::raw_ostream &tyr::ir::operator<<(llvm::raw_ostream &os,
+                                       const tyr::ir::Field &f) {
+  os << (f.mut ? "mut " : "");
+  f.type->print(os);
+  os << " " << f.name;
+  return os;
+}
 
-  bool visitSuccess = visitor.runOnStruct(*this);
-  if (!visitSuccess) {
-    llvm::errs() << "Visiting struct " << this->m_name_ << " failed";
+llvm::raw_ostream &tyr::ir::operator<<(llvm::raw_ostream &os,
+                                       const tyr::ir::Struct &s) {
+  os << "%" << s.getName() << " "
+     << "{\n";
+  for (auto &f : s.getFields()) {
+    os << "  " << *f << "\n";
   }
-  success &= visitSuccess;
-
-  return success;
+  os << "}";
+  return os;
 }

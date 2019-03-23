@@ -42,8 +42,9 @@ using FieldPtr = std::unique_ptr<Field>;
 
 class Struct {
 public:
-  Struct(std::string name, bool isPacked);
+  explicit Struct(std::string name);
 
+  void setIsPacked(bool isPacked);
   void addField(std::string name, llvm::Type *type, bool isMutable);
   void addRepeatedField(std::string name, llvm::Type *type, bool isMutable);
   void finalizeFields(llvm::Module *Parent);
@@ -52,11 +53,9 @@ public:
   const std::string &getName() const;
   llvm::StructType *getType() const;
 
-  bool visit(Pass &visitor) const;
-
 private:
   const std::string m_name_;
-  const bool m_packed_;
+  bool m_packed_;
   llvm::StructType *m_type_;
 
   std::vector<FieldPtr> m_fields_;
@@ -74,6 +73,9 @@ struct Field {
   llvm::StructType *parentType;
   uint32_t offset;
 };
+
+llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const tyr::ir::Field &f);
+llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const tyr::ir::Struct &s);
 
 } // namespace ir
 } // namespace tyr

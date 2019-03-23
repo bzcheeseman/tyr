@@ -54,40 +54,6 @@ function(tyr_generate_llvm HDRS SRCS)
 
 endfunction()
 
-function(tyr_generate_llvm_ir HDRS SRCS)
-
-    if(NOT ARGN)
-        message(SEND_ERROR "Error: tyr_generate_llvm_ir called without any tyr files")
-        return()
-    endif(NOT ARGN)
-
-    set(${SRCS})
-    set(${HDRS})
-
-    foreach(_FILE ${ARGN})
-        get_filename_component(ABS_FIL ${_FILE} ABSOLUTE)
-        get_filename_component(FIL_WE ${_FILE} NAME_WE)
-
-        list(APPEND ${SRCS} "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.ll")
-        list(APPEND ${HDRS} "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.h")
-
-        add_custom_command(
-          OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.bc"
-                 "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.h"
-          COMMAND tyrc::tyr
-          ARGS -emit-llvm -emit-text -bind-lang=c -out-dir=${CMAKE_CURRENT_BINARY_DIR} ${ABS_FIL}
-          DEPENDS ${ABS_FIL} tyrc::tyr
-          COMMENT "Running tyr compiler on ${_FILE}"
-          VERBATIM )
-    endforeach()
-
-    set_source_files_properties(${${SRCS}} ${${HDRS}} PROPERTIES GENERATED TRUE)
-    set_source_files_properties(${${SRCS}} PROPERTIES LANGUAGE C)
-    set(${SRCS} ${${SRCS}} PARENT_SCOPE)
-    set(${HDRS} ${${HDRS}} PARENT_SCOPE)
-
-endfunction()
-
 function(tyr_generate_obj HDRS OBJS)
 
     if(NOT ARGN)

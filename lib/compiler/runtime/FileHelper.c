@@ -52,6 +52,7 @@ bool tyr_serialize_to_file(const char *filename, bool exist_ok, serializer_fn s,
     return false;
   }
 
+  // First 64 bits are the length of the whole buffer
   uint64_t serialized_len = *((uint64_t *)serialized);
   // Attempt to write the whole buffer
   ssize_t write_ptr = write(fd, serialized, serialized_len);

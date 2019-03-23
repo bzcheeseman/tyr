@@ -31,7 +31,7 @@
 #include <fstream>
 
 uint8_t *get_serialized_storage(std::vector<float> &x, std::vector<float> &y) {
-  path_ptr data = create_path(5);
+  path_t *data = create_path(5);
 
   std::random_device rd;
   std::mt19937 e(rd());
@@ -45,7 +45,7 @@ uint8_t *get_serialized_storage(std::vector<float> &x, std::vector<float> &y) {
   set_path_x(data, x.data(), x.size());
   set_path_y(data, y.data(), y.size());
 
-  tyr_serialize_to_file("serialized_path.tsf", true, &serialize_path, data);
+  assert(tyr_serialize_to_file("serialized_path.tsf", true, &serialize_path, data));
 
   uint8_t *out = serialize_path(data);
   destroy_path(data);
@@ -53,7 +53,7 @@ uint8_t *get_serialized_storage(std::vector<float> &x, std::vector<float> &y) {
 }
 
 bool check_serialized(uint8_t *serialized, const std::vector<float> &x, const std::vector<float> &y) {
-  path_ptr deserialized = deserialize_path(serialized);
+  path_t *deserialized = (path_t *)deserialize_path(serialized);
   free(serialized);
 
   uint32_t idx = 0;
@@ -82,22 +82,22 @@ bool check_serialized(uint8_t *serialized, const std::vector<float> &x, const st
 }
 
 uint8_t *get_serialized_graph() {
-  std::vector<node_ptr> nodes;
+  std::vector<node_t *> nodes;
   for (int i = 0; i < 15; ++i) {
     std::array<uint64_t, 3> data_vec {1, 1, 1};
     nodes.push_back(create_node(i, data_vec.size(), data_vec.data()));
   }
 
-  std::vector<edge_ptr> edges;
+  std::vector<edge_t *> edges;
   for (int i = 0; i < 14; ++i) {
     edges.push_back(create_edge(i, i+1));
   }
 
-  graph_ptr g = create_graph();
+  graph_t *g = create_graph();
   set_graph_node(g, nodes.data(), nodes.size());
   set_graph_edge(g, edges.data(), edges.size());
 
-  edge_ptr *out_edges = nullptr;
+  edge_t **out_edges = nullptr;
   get_graph_edge(g, &out_edges);
   uint64_t edge_count;
   get_graph_edge_count(g, &edge_count);
@@ -109,7 +109,7 @@ uint8_t *get_serialized_graph() {
     assert(src == i && sink == i+1);
   }
 
-  node_ptr *out_nodes = nullptr;
+  node_t **out_nodes = nullptr;
   get_graph_node(g, &out_nodes);
   uint64_t node_count;
   get_graph_node_count(g, &node_count);
@@ -131,7 +131,7 @@ uint8_t *get_serialized_graph() {
     }
   }
 
-  tyr_serialize_to_file("serialized_graph.tsf", true, &serialize_graph, g);
+  assert(tyr_serialize_to_file("serialized_graph.tsf", true, &serialize_graph, g));
 
   uint8_t *serialized = serialize_graph(g);
   destroy_graph(g);
@@ -139,10 +139,10 @@ uint8_t *get_serialized_graph() {
 }
 
 bool check_graph(uint8_t *serialized) {
-  graph_ptr deserialized = deserialize_graph(serialized);
+  graph_t *deserialized = (graph_t *)deserialize_graph(serialized);
   free(serialized);
 
-  edge_ptr *out_edges = nullptr;
+  edge_t **out_edges = nullptr;
   get_graph_edge(deserialized, &out_edges);
   for (int i = 0; i < 14; ++i) {
     uint16_t src, sink;
@@ -151,7 +151,7 @@ bool check_graph(uint8_t *serialized) {
     assert(src == i && sink == i+1);
   }
 
-  node_ptr *out_nodes = nullptr;
+  node_t **out_nodes = nullptr;
   get_graph_node(deserialized, &out_nodes);
   for (int i = 0; i < 15; ++i) {
     uint16_t id;
@@ -174,9 +174,9 @@ bool check_graph(uint8_t *serialized) {
 }
 
 bool check_graph_file() {
-  graph_ptr deserialized = tyr_deserialize_from_file("serialized_graph.tsf", &deserialize_graph);
+  graph_t *deserialized = (graph_t *)tyr_deserialize_from_file("serialized_graph.tsf", &deserialize_graph);
 
-  edge_ptr *out_edges = nullptr;
+  edge_t **out_edges = nullptr;
   get_graph_edge(deserialized, &out_edges);
   for (int i = 0; i < 14; ++i) {
     uint16_t src, sink;
@@ -185,7 +185,7 @@ bool check_graph_file() {
     assert(src == i && sink == i+1);
   }
 
-  node_ptr *out_nodes = nullptr;
+  node_t **out_nodes = nullptr;
   get_graph_node(deserialized, &out_nodes);
   for (int i = 0; i < 15; ++i) {
     uint16_t id;

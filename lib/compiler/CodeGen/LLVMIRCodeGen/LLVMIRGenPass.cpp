@@ -20,11 +20,12 @@
     limitations under the License.
  */
 
-#include "LLVMCodegenPass.hpp"
+#include "LLVMIRGenPass.hpp"
 
 #include "IR.hpp"
+#include "Module.hpp"
 
-#include "llvm/Support/Endian.h"
+#include <llvm/Transforms/Utils/Cloning.h>
 
 namespace { // Utilities
 // Returns the non-null block
@@ -141,14 +142,12 @@ void swapArrayBytes(llvm::Value *ArrayPtr, llvm::Value *Count,
 }
 } // namespace
 
-tyr::pass::LLVMCodegenPass::LLVMCodegenPass(llvm::Module *Parent)
+tyr::pass::LLVMIRGenPass::LLVMIRGenPass(llvm::Module *Parent)
     : m_parent_(Parent) {}
 
-std::string tyr::pass::LLVMCodegenPass::getName() {
-  return "LLVMCodegenPass";
-}
+std::string tyr::pass::LLVMIRGenPass::getName() { return "LLVMIRGenPass"; }
 
-bool tyr::pass::LLVMCodegenPass::runOnStruct(const tyr::ir::Struct &s) {
+bool tyr::pass::LLVMIRGenPass::runOnStruct(const tyr::ir::Struct &s) {
   if (!getConstructor(&s)) {
     llvm::errs() << "Get constructor failed for struct "
                  << s.getType()->getName() << " aborting\n";
@@ -172,7 +171,7 @@ bool tyr::pass::LLVMCodegenPass::runOnStruct(const tyr::ir::Struct &s) {
   return true;
 }
 
-bool tyr::pass::LLVMCodegenPass::runOnField(const tyr::ir::Field &f) {
+bool tyr::pass::LLVMIRGenPass::runOnField(const tyr::ir::Field &f) {
   if (!getGetter(&f)) {
     llvm::errs() << "Get getter failed for field " << f.name << " aborting\n";
     return false;
@@ -204,9 +203,9 @@ bool tyr::pass::LLVMCodegenPass::runOnField(const tyr::ir::Field &f) {
 }
 
 llvm::Value *
-tyr::pass::LLVMCodegenPass::getFieldAllocSize(const tyr::ir::Field *f,
-                                             llvm::Value *Struct,
-                                             llvm::IRBuilder<> &builder) const {
+tyr::pass::LLVMIRGenPass::getFieldAllocSize(const tyr::ir::Field *f,
+                                            llvm::Value *Struct,
+                                            llvm::IRBuilder<> &builder) const {
   const llvm::DataLayout &DL = m_parent_->getDataLayout();
 
   if (f->type->isPointerTy() && !f->isStruct) { // array
@@ -221,10 +220,10 @@ tyr::pass::LLVMCodegenPass::getFieldAllocSize(const tyr::ir::Field *f,
   return builder.getInt64(DL.getTypeAllocSize(f->type));
 }
 
-bool tyr::pass::LLVMCodegenPass::initField(const tyr::ir::Field *f,
-                                          llvm::Value *Struct,
-                                          llvm::Argument *Arg,
-                                          llvm::IRBuilder<> &builder) {
+bool tyr::pass::LLVMIRGenPass::initField(const tyr::ir::Field *f,
+                                         llvm::Value *Struct,
+                                         llvm::Argument *Arg,
+                                         llvm::IRBuilder<> &builder) {
   if (f->mut) {
     // Initialize to zero (still works even if it's a pointer)
     builder.CreateStore(
@@ -267,9 +266,9 @@ bool tyr::pass::LLVMCodegenPass::initField(const tyr::ir::Field *f,
   return true;
 }
 
-bool tyr::pass::LLVMCodegenPass::destroyField(const tyr::ir::Field *f,
-                                             llvm::Value *Struct,
-                                             llvm::IRBuilder<> &builder) {
+bool tyr::pass::LLVMIRGenPass::destroyField(const tyr::ir::Field *f,
+                                            llvm::Value *Struct,
+                                            llvm::IRBuilder<> &builder) {
   llvm::Value *FieldGEP = builder.CreateStructGEP(Struct, f->offset);
 
   const uint32_t AddrSpace =
@@ -284,7 +283,7 @@ bool tyr::pass::LLVMCodegenPass::destroyField(const tyr::ir::Field *f,
   return true;
 }
 
-bool tyr::pass::LLVMCodegenPass::getGetter(const ir::Field *f) const {
+bool tyr::pass::LLVMIRGenPass::getGetter(const ir::Field *f) const {
   const uint32_t AddrSpace =
       m_parent_->getDataLayout().getProgramAddressSpace();
 
@@ -369,7 +368,7 @@ bool tyr::pass::LLVMCodegenPass::getGetter(const ir::Field *f) const {
   return true;
 }
 
-bool tyr::pass::LLVMCodegenPass::getItemGetter(const tyr::ir::Field *f) const {
+bool tyr::pass::LLVMIRGenPass::getItemGetter(const tyr::ir::Field *f) const {
   if (!f->isRepeated) { // Not an array
     return true;
   }
@@ -439,7 +438,7 @@ bool tyr::pass::LLVMCodegenPass::getItemGetter(const tyr::ir::Field *f) const {
   return true;
 }
 
-bool tyr::pass::LLVMCodegenPass::getSetter(const tyr::ir::Field *f) const {
+bool tyr::pass::LLVMIRGenPass::getSetter(const tyr::ir::Field *f) const {
   if (!f->mut) {
     return true;
   }
@@ -590,8 +589,10 @@ bool tyr::pass::LLVMCodegenPass::getSetter(const tyr::ir::Field *f) const {
   } else if (f->isCount) {
     // Check if the input size is 0
     llvm::BasicBlock *NewSizeIsZero = llvm::BasicBlock::Create(ctx, "", Setter);
-    llvm::BasicBlock *NewSizeIsNotZero = llvm::BasicBlock::Create(ctx, "", Setter);
-    llvm::Value *InputSizeIsZero = builder.CreateICmpEQ(ToInsert, builder.CreateBitCast(builder.getInt64(0), f->type));
+    llvm::BasicBlock *NewSizeIsNotZero =
+        llvm::BasicBlock::Create(ctx, "", Setter);
+    llvm::Value *InputSizeIsZero = builder.CreateICmpEQ(
+        ToInsert, builder.CreateBitCast(builder.getInt64(0), f->type));
     builder.CreateCondBr(InputSizeIsZero, NewSizeIsZero, NewSizeIsNotZero);
 
     // And return false if it is
@@ -606,13 +607,15 @@ bool tyr::pass::LLVMCodegenPass::getSetter(const tyr::ir::Field *f) const {
     builder.CreateStore(ToInsert, FieldGEP);
 
     // Load the repeated field
-    llvm::Value *RepeatedFieldGEP = builder.CreateStructGEP(Self, f->countsFor->offset);
+    llvm::Value *RepeatedFieldGEP =
+        builder.CreateStructGEP(Self, f->countsFor->offset);
     llvm::Value *LoadedRepeatedField = builder.CreateLoad(RepeatedFieldGEP);
     // Realloc to set the size
     llvm::Value *ReallocFieldMem = builder.CreateCall(
-            m_parent_->getFunction("realloc"),
-            {builder.CreateBitCast(LoadedRepeatedField, builder.getInt8PtrTy(AddrSpace)),
-             getFieldAllocSize(f->countsFor, Self, builder)});
+        m_parent_->getFunction("realloc"),
+        {builder.CreateBitCast(LoadedRepeatedField,
+                               builder.getInt8PtrTy(AddrSpace)),
+         getFieldAllocSize(f->countsFor, Self, builder)});
     // Replace the old size just in case
     builder.CreateStore(LoadedCount, FieldGEP);
 
@@ -620,7 +623,8 @@ bool tyr::pass::LLVMCodegenPass::getSetter(const tyr::ir::Field *f) const {
     llvm::BasicBlock *SizeIsRight = llvm::BasicBlock::Create(ctx, "", Setter);
 
     // Cast to the right type
-    ReallocFieldMem = builder.CreateBitCast(ReallocFieldMem, f->countsFor->type);
+    ReallocFieldMem =
+        builder.CreateBitCast(ReallocFieldMem, f->countsFor->type);
     // Make sure realloc succeeded
     (void)insertNullCheck({ReallocFieldMem}, builder.getInt1(false), builder,
                           Setter, SizeIsRight);
@@ -630,14 +634,14 @@ bool tyr::pass::LLVMCodegenPass::getSetter(const tyr::ir::Field *f) const {
     builder.CreateStore(ToInsert, FieldGEP);
     builder.CreateRet(builder.getInt1(true));
   } else {
-      builder.CreateStore(ToInsert, FieldGEP);
-      builder.CreateRet(builder.getInt1(true));
+    builder.CreateStore(ToInsert, FieldGEP);
+    builder.CreateRet(builder.getInt1(true));
   }
 
   return true;
 }
 
-bool tyr::pass::LLVMCodegenPass::getItemSetter(const tyr::ir::Field *f) const {
+bool tyr::pass::LLVMIRGenPass::getItemSetter(const tyr::ir::Field *f) const {
   if (!f->isRepeated) { // not an array
     return true;
   }
@@ -709,17 +713,17 @@ bool tyr::pass::LLVMCodegenPass::getItemSetter(const tyr::ir::Field *f) const {
 }
 
 std::string
-tyr::pass::LLVMCodegenPass::getSerializerName(const tyr::ir::Field *f) const {
+tyr::pass::LLVMIRGenPass::getSerializerName(const tyr::ir::Field *f) const {
   return "__serialize_" + std::string(f->parentType->getName()) + "_" + f->name;
 }
 
 std::string
-tyr::pass::LLVMCodegenPass::getDeserializerName(const tyr::ir::Field *f) const {
+tyr::pass::LLVMIRGenPass::getDeserializerName(const tyr::ir::Field *f) const {
   return "__deserialize_" + std::string(f->parentType->getName()) + "_" +
          f->name;
 }
 
-bool tyr::pass::LLVMCodegenPass::getSerializer(const tyr::ir::Field *f) const {
+bool tyr::pass::LLVMIRGenPass::getSerializer(const tyr::ir::Field *f) const {
   if (f->isCount) { // Don't serialize count fields
     return true;
   }
@@ -819,7 +823,7 @@ bool tyr::pass::LLVMCodegenPass::getSerializer(const tyr::ir::Field *f) const {
   return true;
 }
 
-bool tyr::pass::LLVMCodegenPass::getDeserializer(const tyr::ir::Field *f) const {
+bool tyr::pass::LLVMIRGenPass::getDeserializer(const tyr::ir::Field *f) const {
   if (f->isCount) { // Don't serialize count fields
     return true;
   }
@@ -930,12 +934,12 @@ bool tyr::pass::LLVMCodegenPass::getDeserializer(const tyr::ir::Field *f) const 
 }
 
 uint64_t
-tyr::pass::LLVMCodegenPass::getStructAllocSize(const tyr::ir::Struct *s) {
+tyr::pass::LLVMIRGenPass::getStructAllocSize(const tyr::ir::Struct *s) {
   const llvm::DataLayout &DL = m_parent_->getDataLayout();
   return DL.getTypeAllocSize(s->getType());
 }
 
-bool tyr::pass::LLVMCodegenPass::getConstructor(const tyr::ir::Struct *s) {
+bool tyr::pass::LLVMIRGenPass::getConstructor(const tyr::ir::Struct *s) {
   llvm::ArrayRef<ir::FieldPtr> structFields = s->getFields();
 
   std::vector<llvm::Type *> NonMutFields;
@@ -998,7 +1002,7 @@ bool tyr::pass::LLVMCodegenPass::getConstructor(const tyr::ir::Struct *s) {
   return true;
 }
 
-bool tyr::pass::LLVMCodegenPass::getDestructor(const tyr::ir::Struct *s) {
+bool tyr::pass::LLVMIRGenPass::getDestructor(const tyr::ir::Struct *s) {
   llvm::ArrayRef<ir::FieldPtr> structFields = s->getFields();
   llvm::LLVMContext &ctx = m_parent_->getContext();
 
@@ -1033,7 +1037,7 @@ bool tyr::pass::LLVMCodegenPass::getDestructor(const tyr::ir::Struct *s) {
   return true;
 }
 
-bool tyr::pass::LLVMCodegenPass::getSerializer(const tyr::ir::Struct *s) {
+bool tyr::pass::LLVMIRGenPass::getSerializer(const tyr::ir::Struct *s) {
   llvm::ArrayRef<ir::FieldPtr> structFields = s->getFields();
   llvm::LLVMContext &ctx = m_parent_->getContext();
 
@@ -1110,7 +1114,7 @@ bool tyr::pass::LLVMCodegenPass::getSerializer(const tyr::ir::Struct *s) {
   return true;
 }
 
-bool tyr::pass::LLVMCodegenPass::getDeserializer(const tyr::ir::Struct *s) {
+bool tyr::pass::LLVMIRGenPass::getDeserializer(const tyr::ir::Struct *s) {
   llvm::ArrayRef<ir::FieldPtr> structFields = s->getFields();
   llvm::LLVMContext &ctx = m_parent_->getContext();
 
@@ -1210,4 +1214,8 @@ bool tyr::pass::LLVMCodegenPass::getDeserializer(const tyr::ir::Struct *s) {
   builder.CreateRet(StructOut);
 
   return true;
+}
+
+tyr::ir::Pass::Ptr tyr::pass::createLLVMIRGenPass(tyr::Module &Parent) {
+  return llvm::make_unique<tyr::pass::LLVMIRGenPass>(Parent.getModule());
 }

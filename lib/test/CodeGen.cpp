@@ -19,7 +19,6 @@
     See the License for the specific language governing permissions and
     limitations under the License.
  */
-#include "CodeGen.hpp"
 
 #include <gtest/gtest.h>
 
@@ -33,52 +32,75 @@
 #include <llvm/Support/TargetRegistry.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
+#include <LLVMIRCodeGen/LLVMIRGenPass.hpp>
+
+#include "Module.hpp"
+#include "IR.hpp"
 
 namespace {
 
 TEST(CodeGen, verif_correct) {
-  tyr::CodeGen cg{"test", llvm::sys::getDefaultTargetTriple(),
-                  llvm::sys::getHostCPUName(), ""};
+  llvm::LLVMContext ctx;
+  tyr::Module m{"test_module", ctx};
+  m.setTargetTriple("aarch64_be-unknown-unknown");
 
-  cg.newStruct("testStruct", false);
+  tyr::ir::Struct *s = m.getOrCreateStruct("test");
+  s->setIsPacked(true);
 
-  EXPECT_TRUE(cg.addField("testStruct", true, false, "float", "floatField"));
-  EXPECT_TRUE(cg.addField("testStruct", true, false, "int16", "intField"));
-  EXPECT_TRUE(cg.addField("testStruct", true, true, "int8", "arrayField"));
+  s->addField("float", m.parseType("float", false), true);
+  s->addField("int16", m.parseType("int16", false), false);
+  s->addRepeatedField("ptr", m.parseType("int8", true), true);
 
-  cg.finalizeStruct("testStruct");
+  s->finalizeFields(m.getModule());
 
-  EXPECT_FALSE(cg.verifyModule(llvm::errs()));
+  tyr::PassManager PM;
+  PM.registerPass(tyr::pass::createLLVMIRGenPass(m));
+  EXPECT_TRUE(PM.runOnModule(m));
+
+  EXPECT_FALSE(llvm::verifyModule(*(m.getModule()), &llvm::errs()));
 }
 
 TEST(CodeGen, verif_correct_be) {
-  tyr::CodeGen cg{"test", "aarch64_be-unknown-unknown", "", ""};
+  llvm::LLVMContext ctx;
+  tyr::Module m{"test_module", ctx};
+  m.setTargetTriple("aarch64_be-unknown-unknown");
 
-  cg.newStruct("testStruct", false);
+  tyr::ir::Struct *s = m.getOrCreateStruct("test");
+  s->setIsPacked(true);
 
-  EXPECT_TRUE(cg.addField("testStruct", true, false, "float", "floatField"));
-  EXPECT_TRUE(cg.addField("testStruct", true, false, "int16", "intField"));
-  EXPECT_TRUE(cg.addField("testStruct", true, true, "int8", "arrayField"));
+  s->addField("float", m.parseType("float", false), true);
+  s->addField("int16", m.parseType("int16", false), false);
+  s->addRepeatedField("ptr", m.parseType("int8", true), true);
 
-  cg.finalizeStruct("testStruct");
+  s->finalizeFields(m.getModule());
 
-  EXPECT_FALSE(cg.verifyModule(llvm::errs()));
+  tyr::PassManager PM;
+  PM.registerPass(tyr::pass::createLLVMIRGenPass(m));
+  EXPECT_TRUE(PM.runOnModule(m));
+
+  EXPECT_FALSE(llvm::verifyModule(*(m.getModule()), &llvm::errs()));
 }
 
 TEST(CodeGen, code_correct) {
-  tyr::CodeGen cg{"test_module", llvm::sys::getDefaultTargetTriple(),
-                  llvm::sys::getHostCPUName(), ""};
+  llvm::LLVMContext ctx;
+  tyr::Module m{"test_module", ctx};
 
-  cg.newStruct("test", true);
+  tyr::ir::Struct *s = m.getOrCreateStruct("test");
+  s->setIsPacked(true);
 
-  EXPECT_TRUE(cg.addField("test", true, false, "float", "float"));
-  EXPECT_TRUE(cg.addField("test", false, false, "int16", "int16"));
-  EXPECT_TRUE(cg.addField("test", true, true, "int32", "ptr"));
+  s->addField("float", m.parseType("float", false), true);
+  s->addField("int16", m.parseType("int16", false), false);
+  s->addRepeatedField("ptr", m.parseType("int32", true), true);
 
-  cg.finalizeStruct("test");
-  EXPECT_FALSE(cg.verifyModule(llvm::errs()));
+  s->finalizeFields(m.getModule());
 
-  llvm::ExecutionEngine *engine = cg.getExecutionEngine();
+  tyr::PassManager PM;
+  PM.registerPass(tyr::pass::createLLVMIRGenPass(m));
+  EXPECT_TRUE(PM.runOnModule(m));
+
+  EXPECT_FALSE(llvm::verifyModule(*(m.getModule()), &llvm::errs()));
+
+  llvm::ExecutionEngine *engine = tyr::getExecutionEngine(m.getModule());
   EXPECT_TRUE(engine != nullptr);
 
   auto constructor =
@@ -97,7 +119,7 @@ TEST(CodeGen, code_correct) {
   auto count_getter = (bool (*)(void *, uint64_t *))engine->getFunctionAddress(
       "get_test_ptr_count");
   auto count_setter = (bool (*)(void *, uint64_t))engine->getFunctionAddress(
-          "set_test_ptr_count");
+      "set_test_ptr_count");
   auto setter = (bool (*)(void *, uint32_t *,
                           uint64_t))engine->getFunctionAddress("set_test_ptr");
   auto item_setter =
