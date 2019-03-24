@@ -71,7 +71,7 @@ are supported.
 
 ### Native
 ```bash
-tyr <filename> -bind-lang=[c/python] -out-dir=/path/to/out/dir
+tyr <filename> -bind-lang=[c/python] -runtime-options=<file-utils> -out-dir=/path/to/out/dir
 ```
 
 ### Docker (build + run)
