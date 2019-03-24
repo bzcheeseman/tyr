@@ -8,9 +8,9 @@ target_link_libraries(tyr tyr-codegen tyr-frontend Threads::Threads)
 add_dependencies(tyr tyr-rt-core)
 
 if (CMAKE_BUILD_TYPE MATCHES Release)
-    add_definitions(-DTYR_RT_BITCODE_FILE="${CMAKE_INSTALL_PREFIX}/lib/tyr/tyr-rt-core.bc")
+    add_definitions(-DTYR_RT_BITCODE_DIR="${CMAKE_INSTALL_PREFIX}/lib/tyr/")
 else()
-    add_definitions(-DTYR_RT_BITCODE_FILE="${CMAKE_BINARY_DIR}/tyr-rt-core.bc")
+    add_definitions(-DTYR_RT_BITCODE_DIR="${CMAKE_BINARY_DIR}/")
 endif()
 
 install(EXPORT tyr-targets

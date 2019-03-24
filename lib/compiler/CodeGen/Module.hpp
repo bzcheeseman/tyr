@@ -46,7 +46,7 @@ public:
 
   ir::Struct *getOrCreateStruct(const std::string &name);
   const std::unordered_map<std::string, ir::Struct *> &getStructs() const;
-  bool linkOutsideModule(const std::string &filename);
+  bool linkRuntimeModules(const std::string &Directory, uint32_t options);
 
   bool visit(ir::Pass &p);
 
@@ -64,6 +64,10 @@ private:
 };
 
 llvm::ExecutionEngine *getExecutionEngine(llvm::Module *Parent);
+
+namespace rt {
+bool isFileEnabled(uint32_t options);
+}
 } // namespace tyr
 
 #endif // TYR_MODULE_HPP

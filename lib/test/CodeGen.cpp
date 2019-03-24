@@ -42,7 +42,7 @@ namespace {
 TEST(CodeGen, verif_correct) {
   llvm::LLVMContext ctx;
   tyr::Module m{"test_module", ctx};
-  m.setTargetTriple("aarch64_be-unknown-unknown");
+  m.setTargetTriple("wasm32-unknown-unknown-wasm");
 
   tyr::ir::Struct *s = m.getOrCreateStruct("test");
   s->setIsPacked(true);

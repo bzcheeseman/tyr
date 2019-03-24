@@ -18,4 +18,10 @@ test/**/*.tsf
 test/tyr
 test/install
 
+# For the rust tests
+test/**/target/
+test/**/Cargo.lock
+test/**/**/*.rs.bk
+test/**/build_*_bindings.rs
+
 venv/

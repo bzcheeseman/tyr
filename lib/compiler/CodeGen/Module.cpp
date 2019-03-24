@@ -141,32 +141,59 @@ llvm::Type *tyr::Module::parseType(std::string FieldType, bool IsRepeated) {
   return OutTy;
 }
 
-bool tyr::Module::linkOutsideModule(const std::string &filename) {
+namespace {
+const std::string TYR_FILE_HELPER_FILE = "tyr-rt-file.bc";
+
+std::unique_ptr<llvm::Module>
+getModuleFromFile(llvm::LLVMContext &ctx, const std::string &filename,
+                  const std::string &TargetTriple) {
   auto FileBuf = llvm::MemoryBuffer::getFile(filename);
   if (std::error_code ec = FileBuf.getError()) {
     llvm::errs() << "Error getting file " << filename << ": " << ec.message()
                  << "\n";
-    return false;
+    return nullptr;
   }
 
-  auto ExpOutsideModule = llvm::parseBitcodeFile(*FileBuf.get(), m_ctx_);
+  auto ExpOutsideModule = llvm::parseBitcodeFile(*FileBuf.get(), ctx);
   if (!ExpOutsideModule) {
     llvm::errs() << "Error parsing bitcode file " << filename << "\n";
-    return false;
+    return nullptr;
   }
 
   std::unique_ptr<llvm::Module> OutsideModule =
       std::move(ExpOutsideModule.get());
+  OutsideModule->setTargetTriple(TargetTriple);
 
-  OutsideModule->setTargetTriple(m_parent_->getTargetTriple());
-  OutsideModule->setDataLayout(m_parent_->getDataLayout());
+  return OutsideModule;
+}
+} // namespace
 
-  bool LinkFailed =
-      llvm::Linker::linkModules(*m_parent_, std::move(OutsideModule));
-  if (LinkFailed) {
-    llvm::errs() << "Linking modules failed for input file " << filename
-                 << " and this module may be unstable\n";
-    return false;
+bool tyr::Module::linkRuntimeModules(const std::string &Directory,
+                                     uint32_t options) {
+  llvm::Linker llvmLinker{*m_parent_};
+
+  llvm::SmallVector<std::unique_ptr<llvm::Module>, 3> OutsideModule = {};
+
+  if (rt::isFileEnabled(options)) { // link in the file helpers
+    llvm::SmallVector<char, 100> path{Directory.begin(), Directory.end()};
+    llvm::sys::path::append(path, TYR_FILE_HELPER_FILE);
+    llvm::sys::fs::make_absolute(path);
+    const std::string Filename{path.begin(), path.end()};
+
+    OutsideModule.push_back(
+        getModuleFromFile(m_ctx_, Filename, m_parent_->getTargetTriple()));
+  }
+
+  if (!OutsideModule.empty()) {
+    for (auto &OM : OutsideModule) {
+      bool LinkFailed = llvmLinker.linkInModule(std::move(OM));
+      if (LinkFailed) {
+        llvm::errs() << "Linking modules failed for options ";
+        llvm::errs().write_hex(options);
+        llvm::errs() << " and this module may be unstable\n";
+        return false;
+      }
+    }
   }
 
   return true;
@@ -194,3 +221,5 @@ llvm::ExecutionEngine *tyr::getExecutionEngine(llvm::Module *Parent) {
 
   return engine;
 }
+
+bool tyr::rt::isFileEnabled(uint32_t options) { return options & 0b1; }

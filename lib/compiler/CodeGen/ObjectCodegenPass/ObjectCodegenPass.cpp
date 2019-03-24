@@ -75,8 +75,9 @@ bool tyr::pass::ObjectCodegenPass::runOnModule(tyr::Module &m) {
   parent->setDataLayout(m_target_->createDataLayout());
 
   // Now do the module codegen
-  llvm::SmallVector<char, 35> path{m_output_dir_.begin(), m_output_dir_.end()};
+  llvm::SmallVector<char, 100> path{m_output_dir_.begin(), m_output_dir_.end()};
   llvm::sys::path::append(path, ModuleName + ".o");
+  llvm::sys::fs::make_absolute(path);
 
   const std::string Filename{path.begin(), path.end()};
 
@@ -93,7 +94,8 @@ bool tyr::pass::ObjectCodegenPass::runOnModule(tyr::Module &m) {
   }
 
   llvm::PassManagerBuilder PMBuilder;
-  PMBuilder.OptLevel = 3;
+  PMBuilder.OptLevel = 2;
+  PMBuilder.SizeLevel = 2;
 
   m_target_->adjustPassManager(PMBuilder);
   PMBuilder.populateModulePassManager(PM);
@@ -110,6 +112,7 @@ bool tyr::pass::ObjectCodegenPass::runOnModule(tyr::Module &m) {
   }
 
   dest.flush();
+  dest.close();
   return true;
 }
 

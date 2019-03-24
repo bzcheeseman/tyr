@@ -68,15 +68,18 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &out, const llvm::Type *Ty) {
 }
 } // namespace
 
-tyr::pass::CCodegenPass::CCodegenPass(const std::string &OutputDir)
-    : m_output_dir_(OutputDir) {}
+tyr::pass::CCodegenPass::CCodegenPass(const std::string &OutputDir,
+                                      const uint32_t RTOptions)
+    : m_output_dir_(OutputDir), m_rt_options_(RTOptions) {}
 
 std::string tyr::pass::CCodegenPass::getName() { return "CCodegenPass"; }
 
 bool tyr::pass::CCodegenPass::runOnModule(tyr::Module &m) {
   // Set up the file we're writing to
-  llvm::SmallVector<char, 35> path{m_output_dir_.begin(), m_output_dir_.end()};
+  llvm::SmallVector<char, 100> path{m_output_dir_.begin(), m_output_dir_.end()};
   llvm::sys::path::append(path, m.getModule()->getName() + ".h");
+  llvm::sys::fs::make_absolute(path);
+
   const std::string Filename{path.begin(), path.end()};
   std::error_code EC;
   llvm::raw_fd_ostream out(Filename, EC, llvm::sys::fs::F_None);
@@ -101,8 +104,11 @@ bool tyr::pass::CCodegenPass::runOnModule(tyr::Module &m) {
   out << "#include <stdbool.h>\n"
          "#include <stdint.h>\n";
 
-  // Link Runtime
-  out << "#include <tyr/rt/FileHelper.h>\n";
+  if (rt::isFileEnabled(m_rt_options_)) {
+    // Link FileHelper
+    out << "#include <tyr/rt/FileHelper.h>\n";
+  }
+
   out << "\n";
 
   // Iterate over the structs and create the typedefs
@@ -195,6 +201,7 @@ bool tyr::pass::CCodegenPass::runOnModule(tyr::Module &m) {
   return true;
 }
 
-tyr::ir::Pass::Ptr tyr::pass::createCCodegenPass(const std::string &Filename) {
-  return llvm::make_unique<tyr::pass::CCodegenPass>(Filename);
+tyr::ir::Pass::Ptr tyr::pass::createCCodegenPass(const std::string &OutputDir,
+                                                 uint32_t RTOptions) {
+  return llvm::make_unique<tyr::pass::CCodegenPass>(OutputDir, RTOptions);
 }

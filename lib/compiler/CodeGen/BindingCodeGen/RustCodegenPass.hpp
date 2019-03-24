@@ -1,5 +1,5 @@
 //
-// Created by Aman LaChapelle on 2019-02-12.
+// Created by Aman LaChapelle on 2019-03-23.
 //
 // tyr
 // Copyright (c) 2019 Aman LaChapelle
@@ -20,18 +20,20 @@
     limitations under the License.
  */
 
-#ifndef TYR_CBINDINGVISITOR_HPP
-#define TYR_CBINDINGVISITOR_HPP
+#ifndef TYR_RUSTCODEGENPASS_HPP
+#define TYR_RUSTCODEGENPASS_HPP
 
 #include <string>
 
 #include "Pass.hpp"
 
 namespace tyr {
+class Module;
+
 namespace pass {
-class CCodegenPass : public ir::Pass {
+class RustCodegenPass : public ir::Pass {
 public:
-  explicit CCodegenPass(const std::string &OutputDir, uint32_t RTOptions);
+  explicit RustCodegenPass(const std::string &OutputDir, uint32_t RTOptions);
 
   std::string getName() override;
   bool runOnModule(Module &m) override;
@@ -41,9 +43,9 @@ private:
   const uint32_t m_rt_options_;
 };
 
-ir::Pass::Ptr createCCodegenPass(const std::string &OutputDir,
-                                 uint32_t RTOptions);
+ir::Pass::Ptr createRustCodegenPass(const std::string &OutputDir,
+                                    uint32_t RTOptions);
 } // namespace pass
 } // namespace tyr
 
-#endif // TYR_CBINDINGVISITOR_HPP
+#endif // TYR_RUSTCODEGENPASS_HPP

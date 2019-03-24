@@ -20,7 +20,7 @@ set(TYR_INCLUDE_DIR @CMAKE_INSTALL_PREFIX@/include)
 
 include("${CMAKE_CURRENT_LIST_DIR}/tyr-targets.cmake")
 
-function(tyr_generate_llvm HDRS SRCS)
+function(tyr_generate_llvm HDRS SRCS RT_OPTIONS)
 
     if(NOT ARGN)
         message(SEND_ERROR "Error: tyr_generate_llvm called without any tyr files")
@@ -41,7 +41,7 @@ function(tyr_generate_llvm HDRS SRCS)
           OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.bc"
                  "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.h"
           COMMAND tyrc::tyr
-          ARGS -emit-llvm -bind-lang=c -out-dir=${CMAKE_CURRENT_BINARY_DIR} ${ABS_FIL}
+          ARGS -emit-llvm -bind-lang=c -runtime-enable=${RT_OPTIONS} -out-dir=${CMAKE_CURRENT_BINARY_DIR} ${ABS_FIL}
           DEPENDS ${ABS_FIL} tyrc::tyr
           COMMENT "Running tyr compiler on ${_FILE}"
           VERBATIM )
@@ -54,7 +54,7 @@ function(tyr_generate_llvm HDRS SRCS)
 
 endfunction()
 
-function(tyr_generate_obj HDRS OBJS)
+function(tyr_generate_obj HDRS OBJS RT_OPTIONS)
 
     if(NOT ARGN)
         message(SEND_ERROR "Error: tyr_generate_c called without any tyr files")
@@ -75,7 +75,7 @@ function(tyr_generate_obj HDRS OBJS)
           OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.o"
                  "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.h"
           COMMAND tyrc::tyr
-          ARGS -bind-lang=c -out-dir=${CMAKE_CURRENT_BINARY_DIR} ${ABS_FIL}
+          ARGS -bind-lang=c -runtime-enable=${RT_OPTIONS} -out-dir=${CMAKE_CURRENT_BINARY_DIR} ${ABS_FIL}
           DEPENDS ${ABS_FIL} tyrc::tyr
           COMMENT "Running tyr compiler on ${_FILE}"
           VERBATIM )

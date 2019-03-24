@@ -10,7 +10,7 @@ else()
 endif()
 
 # C test
-tyr_generate_obj(TYR_HDRS TYR_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/path.tyr)
+tyr_generate_obj(TYR_HDRS TYR_SRCS "file-utils" ${CMAKE_CURRENT_SOURCE_DIR}/path.tyr)
 set(SOURCES ${TYR_HDRS} ${TYR_SRCS} c/integration_test.cpp)
 add_executable(c_test EXCLUDE_FROM_ALL ${SOURCES})
 target_include_directories(c_test PUBLIC ${TYR_INCLUDE_DIR})

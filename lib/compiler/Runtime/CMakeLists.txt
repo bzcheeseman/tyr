@@ -23,26 +23,32 @@ set(CMAKE_LLIR_CREATE_SHARED_LIBRARY "${LLVM_LINK_BIN} -o <TARGET> <OBJECTS>")
 set(CMAKE_LLIR_CREATE_SHARED_MODULE "${LLVM_LINK_BIN} -o <TARGET> <OBJECTS>")
 set(CMAKE_LLIR_CREATE_STATIC_LIBRARY "${LLVM_LINK_BIN} -o <TARGET> <OBJECTS>")
 
-add_library(tyr-rt-core ${COMPILE_SOURCES})
-set_target_properties(tyr-rt-core
-        PROPERTIES
-        ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
-        C_STANDARD 11
-        C_STANDARD_REQUIRED YES
-        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
-        LINKER_LANGUAGE LLIR
-        OUTPUT_NAME tyr-rt-core.bc
-        POSITION_INDEPENDENT_CODE YES
-        PREFIX ""
-        SUFFIX ""
-        RULE_LAUNCH_COMPILE "${CLANG_BIN} <DEFINES> <INCLUDES> <FLAGS> -o <OBJECT> -c <SOURCE> #")
-target_compile_options(tyr-rt-core
-        PRIVATE
-        -flto
-        -ffast-math
-        -emit-llvm
-        -Os)
+add_custom_target(tyr-rt-core)
 
+function(add_tyr_rt_bc SUFFIX SOURCE HEADER)
+    add_library(tyr-rt-${SUFFIX} ${SOURCE} ${HEADER})
+    set_target_properties(tyr-rt-${SUFFIX}
+            PROPERTIES
+            ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+            C_STANDARD 11
+            C_STANDARD_REQUIRED YES
+            LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+            LINKER_LANGUAGE LLIR
+            OUTPUT_NAME tyr-rt-${SUFFIX}.bc
+            POSITION_INDEPENDENT_CODE YES
+            PREFIX ""
+            SUFFIX ""
+            RULE_LAUNCH_COMPILE "${CLANG_BIN} <DEFINES> <INCLUDES> <FLAGS> -o <OBJECT> -c <SOURCE> #")
+    target_compile_options(tyr-rt-${SUFFIX}
+            PRIVATE
+            -flto
+            -ffast-math
+            -emit-llvm
+            -Oz)
+    add_dependencies(tyr-rt-core tyr-rt-${SUFFIX})
+    install(FILES $<TARGET_FILE:tyr-rt-${SUFFIX}> DESTINATION lib/tyr)
+endfunction()
 
-install(FILES $<TARGET_FILE:tyr-rt-core> DESTINATION lib/tyr)
+add_tyr_rt_bc(file FileHelper.c FileHelper.h)
+
 install(FILES ${COMPILE_HEADERS} DESTINATION include/tyr/rt)

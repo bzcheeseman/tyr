@@ -1,0 +1,9 @@
+[package]
+name = "tyr_integration_test"
+version = "0.0.1"
+authors = ["Aman <bzcheeseman@gmail.com>"]
+build = "build.rs"
+publish = false
+
+[build-dependencies]
+bindgen = "0.42.2"

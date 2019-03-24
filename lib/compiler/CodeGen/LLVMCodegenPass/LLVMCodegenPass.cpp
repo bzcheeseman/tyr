@@ -73,22 +73,24 @@ bool tyr::pass::LLVMCodegenPass::runOnModule(tyr::Module &m) {
   parent->setDataLayout(m_target_->createDataLayout());
 
   // Now do the module codegen
-  llvm::SmallVector<char, 35> path{m_output_dir_.begin(), m_output_dir_.end()};
+  llvm::SmallVector<char, 100> path{m_output_dir_.begin(), m_output_dir_.end()};
   llvm::sys::path::append(path, ModuleName + ".bc");
+  llvm::sys::fs::make_absolute(path);
 
   const std::string Filename{path.begin(), path.end()};
 
   llvm::legacy::PassManager PM;
 
   llvm::PassManagerBuilder PMBuilder;
-  PMBuilder.OptLevel = 3;
+  PMBuilder.OptLevel = 2;
+  PMBuilder.PrepareForLTO = true;
+  PMBuilder.PrepareForThinLTO = true;
+  PMBuilder.SizeLevel = 2;
 
   m_target_->adjustPassManager(PMBuilder);
   PMBuilder.populateModulePassManager(PM);
 
   PM.run(*parent);
-
-  parent->print(llvm::outs(), nullptr);
 
   if (llvm::verifyModule(*parent, &llvm::errs())) {
     return false;

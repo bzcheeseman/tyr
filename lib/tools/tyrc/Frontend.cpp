@@ -32,14 +32,24 @@
 #include <LLVMCodegenPass/LLVMCodegenPass.hpp>
 #include <ObjectCodegenPass/ObjectCodegenPass.hpp>
 #include <BindingCodeGen/CCodegenPass.hpp>
+#include <BindingCodeGen/RustCodegenPass.hpp>
 
 namespace {
 
-#ifndef TYR_RT_BITCODE_FILE
+#ifndef TYR_RT_BITCODE_DIR
 #error "Need the tyr runtime lib file"
 #endif
 
 using namespace llvm;
+
+enum SupportedBindingLanguages {
+  kSBLC,
+  kSBLRust,
+};
+
+enum RuntimeOptions {
+  kEnableFileHelper,
+};
 
 cl::OptionCategory
     tyrCompilerOptions("tyr Compiler Options",
@@ -57,11 +67,22 @@ cl::opt<std::string> ModuleName("module-name",
                                 cl::desc("Override the module name manually"),
                                 cl::init(""), cl::cat(tyrCompilerOptions), cl::Hidden);
 
-cl::opt<std::string>
+cl::opt<SupportedBindingLanguages>
     BindLang("bind-lang",
-             cl::desc("Set the langauge in which to emit bindings (currently only c is supported):"),
-             cl::init("c"),
+             cl::desc("Set the langauge in which to emit bindings:"),
+             cl::values(
+                    clEnumValN(kSBLC, "c", "Generate C bindings (header file)"),
+                    clEnumValN(kSBLRust, "rust", "Generate rust bindings (.h file and build.rs file from that)")
+             ),
+             cl::init(kSBLC),
              cl::cat(tyrCompilerOptions), cl::Hidden);
+
+cl::bits<RuntimeOptions> RuntimeOpts("runtime-enable",
+        cl::desc("Options for configuring the runtime linking:"),
+        cl::values(
+                clEnumValN(kEnableFileHelper, "file-utils", "Disable the file utilities")
+        ),
+        cl::cat(tyrCompilerOptions));
 
 cl::opt<std::string> Target("target-triple", cl::desc("The target triple"),
                             cl::value_desc("triple"),
@@ -69,22 +90,21 @@ cl::opt<std::string> Target("target-triple", cl::desc("The target triple"),
                             cl::cat(tyrCompilerOptions));
 
 cl::opt<std::string> CPU("mcpu", cl::desc("Specific CPU (e.g. skylake)"),
-                         cl::init("generic"), cl::cat(tyrCompilerOptions));
+                         cl::init(""), cl::cat(tyrCompilerOptions));
 
 cl::opt<std::string> Features(
     "mattr",
     cl::desc("Use +feature to enable a feature, or -feature to disable"),
     cl::init(""));
 
-cl::opt<bool> EmitLLVM("emit-llvm", cl::desc("Emit LLVM bytecode"),
+cl::opt<bool> EmitLLVM("emit-llvm", cl::desc("Emit LLVM bytecode. Also enables LTO and ThinLTO."),
                        cl::init(false));
 
 const int COULD_NOT_OPEN_FILE = -1;
 const int PARSING_FAILED = -2;
 const int CODEGEN_FAILED = -3;
 const int RT_LINKING_FAILED = -4;
-const int ADD_PASS_FAILED = -5;
-const int INVALID_ARGUMENT = -6;
+const int INVALID_ARGUMENT = -5;
 
 } // namespace
 
@@ -115,7 +135,7 @@ int main(int argc, char *argv[]) {
   // read the file
   std::ifstream in_file{FN};
   if (!in_file.is_open()) {
-    llvm::errs() << "Could not open file " << FN << " for input\n";
+    llvm::errs() << "Could not open file " << FN << " for reading\n";
     return COULD_NOT_OPEN_FILE;
   }
 
@@ -143,16 +163,26 @@ int main(int argc, char *argv[]) {
     PM.registerPass(tyr::pass::createObjectCodegenPass(CPU.getValue(), Features.getValue(), OutputDir.getValue()));
   }
 
-  if (BindLang.getValue() != "c") {
-    llvm::errs() << "Unsupported binding language: " << BindLang.getValue() << "\n";
-    return INVALID_ARGUMENT;
+  switch (BindLang.getValue()) {
+    case kSBLC: {
+      // Initialize the C binding
+      PM.registerPass(tyr::pass::createCCodegenPass(OutputDir, RuntimeOpts.getBits()));
+      break;
+    }
+    case kSBLRust: {
+      // TODO: remove me when it works better
+      llvm::outs() << "Rust support is still untested and experimental!\n";
+      if (EmitLLVM) {
+        llvm::errs() << "Must build object file when using rust bindings\n";
+        return INVALID_ARGUMENT;
+      }
+      // Initialize the Rust binding
+      PM.registerPass(tyr::pass::createRustCodegenPass(OutputDir, RuntimeOpts.getBits()));
+    }
   }
 
-  // Initialize the C binding
-  PM.registerPass(tyr::pass::createCCodegenPass(OutputDir));
-
   // Link the runtime
-  if (!module.linkOutsideModule(TYR_RT_BITCODE_FILE)) {
+  if (!module.linkRuntimeModules(TYR_RT_BITCODE_DIR, RuntimeOpts.getBits())) {
     llvm::errs() << "Error occurred linking the runtime\n";
     return RT_LINKING_FAILED;
   }
