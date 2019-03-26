@@ -68,7 +68,7 @@ llvm::ExecutionEngine *getExecutionEngine(llvm::Module *Parent);
 namespace rt {
 bool isFileEnabled(uint32_t options);
 bool isB64Enabled(uint32_t options);
-}
+} // namespace rt
 } // namespace tyr
 
 #endif // TYR_MODULE_HPP

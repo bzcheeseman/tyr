@@ -10,9 +10,9 @@
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
     You may obtain a copy of the License at
-    
+
         http://www.apache.org/licenses/LICENSE-2.0
-    
+
     Unless required by applicable law or agreed to in writing, software
     distributed under the License is distributed on an "AS IS" BASIS,
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,21 +22,19 @@
 
 #include "Base64.h"
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <memory.h>
+#include <stdio.h>
+#include <stdlib.h>
 
+// We use the encoding from here: https://tools.ietf.org/html/rfc4648#section-5
+// so it's URL safe
 static inline uint8_t b64_index_to_char(uint32_t index) {
-  // 0-25 is capital letters, 26-51 is lowercase, 52-61 is numbers, 62 is '+' and 63 is '/', and I'm using 64 as '='
+  // 0-25 is capital letters, 26-51 is lowercase, 52-61 is numbers, 62 is '+'
+  // and 63 is '/', and I'm using 64 as '='
   return (uint8_t)(
-          index +
-          ('A' * (index < 26)) +
-          (('a' - 26) * (index >= 26 & index < 52)) +
-          (('0' - 52) * (index >= 52 & index < 62)) +
-          (('+' - 62) * (index == 62)) +
-          (('/' - 63) * (index == 63)) +
-          (('=' - 64) * (index == 64))
-  );
+      index + ('A' * (index < 26)) + (('a' - 26) * (index >= 26 & index < 52)) +
+      (('0' - 52) * (index >= 52 & index < 62)) + (('-' - 62) * (index == 62)) +
+      (('_' - 63) * (index == 63)) + (('=' - 64) * (index == 64)));
 }
 
 static inline uint32_t b64_char_to_index(uint8_t c) {
@@ -46,9 +44,9 @@ static inline uint32_t b64_char_to_index(uint8_t c) {
     return (uint32_t)(c - 'a' + 26);
   } else if ((c >= '0') && (c <= '9')) {
     return (uint32_t)(c - '0' + 52);
-  } else if (c == '+') {
+  } else if (c == '-') {
     return 62;
-  } else if (c == '/') {
+  } else if (c == '_') {
     return 63;
   } else if (c == '=') {
     return 64;
@@ -66,7 +64,8 @@ uint8_t *tyr_serialize_to_base64(serializer_fn s, void *tyr_struct_ptr) {
 
   const uint8_t *serialized_ptr = serialized + sizeof(uint64_t);
 
-  // First 64 bits are the length of the whole buffer (including the first 64 bits)
+  // First 64 bits are the length of the whole buffer (including the first 64
+  // bits)
   uint64_t serialized_len = *((uint64_t *)serialized);
 
   const uint64_t num_pad = (3 - (serialized_len % 3)) % 3;
@@ -88,13 +87,18 @@ uint8_t *tyr_serialize_to_base64(serializer_fn s, void *tyr_struct_ptr) {
     packed = 0;
     // Parse the chars one at a time and pack them into a uint32_t
     for (int8_t j = 2; j >= 0; --j) {
-      packed |= ((str_iter < serialized_len) * (uint32_t)(serialized_ptr[str_iter])) << (8*j);
+      packed |=
+          ((str_iter < serialized_len) * (uint32_t)(serialized_ptr[str_iter]))
+          << (8 * j);
       ++str_iter;
     }
 
     for (int8_t k = 3; k >= 0; --k) {
-      // If we've gotten into the padding bits then use a 64 value to indicate to the converter to give us a padding character
-      uint32_t masked = (b64_iter >= (b64_len - num_pad)) ? 64 : ((packed & (0b111111 << (k * 6))) >> (k * 6));
+      // If we've gotten into the padding bits then use a 64 value to indicate
+      // to the converter to give us a padding character
+      uint32_t masked = (b64_iter >= (b64_len - num_pad))
+                            ? 64
+                            : ((packed & (0b111111 << (k * 6))) >> (k * 6));
       b64_ptr[b64_iter] = b64_index_to_char(masked);
       ++b64_iter;
     }
@@ -103,7 +107,8 @@ uint8_t *tyr_serialize_to_base64(serializer_fn s, void *tyr_struct_ptr) {
   return b64_str;
 }
 
-void *tyr_deserialize_from_base64(deserializer_fn d, const uint8_t *b64_serialized_object) {
+void *tyr_deserialize_from_base64(deserializer_fn d,
+                                  const uint8_t *b64_serialized_object) {
   const uint64_t b64_len = *(uint64_t *)b64_serialized_object;
   if (b64_len % 4 != 0) {
     printf("String length is not a multiple of 4, b64 decoding failed\n");
@@ -112,7 +117,8 @@ void *tyr_deserialize_from_base64(deserializer_fn d, const uint8_t *b64_serializ
 
   const uint64_t str_len = (b64_len / 4) * 3;
 
-  uint8_t *decoded_serialized = malloc(str_len * sizeof(uint8_t) + sizeof(uint64_t));
+  uint8_t *decoded_serialized =
+      malloc(str_len * sizeof(uint8_t) + sizeof(uint64_t));
   memset(decoded_serialized, 0, str_len * sizeof(uint8_t) + sizeof(uint64_t));
   uint8_t *decoded_serialized_ptr = decoded_serialized + sizeof(uint64_t);
 
@@ -129,12 +135,14 @@ void *tyr_deserialize_from_base64(deserializer_fn d, const uint8_t *b64_serializ
         ++num_pad;
         continue;
       }
-      packed |= ((b64_index != 64) * b64_index) << (6*j); // Do nothing if b64_index is 0 or 64
+      packed |= ((b64_index != 64) * b64_index)
+                << (6 * j); // Do nothing if b64_index is 0 or 64
       ++b64_iter;
     }
 
     for (int8_t k = 2; k >= 0; --k) {
-      decoded_serialized_ptr[decoded_iter] = (uint8_t)((packed & (0xff << (8*k))) >> (8*k));
+      decoded_serialized_ptr[decoded_iter] =
+          (uint8_t)((packed & (0xff << (8 * k))) >> (8 * k));
       ++decoded_iter;
     }
   }

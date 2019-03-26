@@ -192,7 +192,7 @@ bool tyr::Module::linkRuntimeModules(const std::string &Directory,
     const std::string Filename{path.begin(), path.end()};
 
     OutsideModule.push_back(
-            getModuleFromFile(m_ctx_, Filename, m_parent_->getTargetTriple()));
+        getModuleFromFile(m_ctx_, Filename, m_parent_->getTargetTriple()));
   }
 
   if (!OutsideModule.empty()) {
@@ -235,6 +235,4 @@ llvm::ExecutionEngine *tyr::getExecutionEngine(llvm::Module *Parent) {
 
 bool tyr::rt::isFileEnabled(uint32_t options) { return options & (0b1 << 0); }
 
-bool tyr::rt::isB64Enabled(uint32_t options) {
-  return options & (0b1 << 1);
-}
+bool tyr::rt::isB64Enabled(uint32_t options) { return options & (0b1 << 1); }
