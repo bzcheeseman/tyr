@@ -67,6 +67,7 @@ llvm::ExecutionEngine *getExecutionEngine(llvm::Module *Parent);
 
 namespace rt {
 bool isFileEnabled(uint32_t options);
+bool isB64Enabled(uint32_t options);
 }
 } // namespace tyr
 

@@ -109,6 +109,11 @@ bool tyr::pass::CCodegenPass::runOnModule(tyr::Module &m) {
     out << "#include <tyr/rt/FileHelper.h>\n";
   }
 
+  if (rt::isB64Enabled(m_rt_options_)) {
+    // Link Base64
+    out << "#include <tyr/rt/Base64.h>\n";
+  }
+
   out << "\n";
 
   // Iterate over the structs and create the typedefs

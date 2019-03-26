@@ -41,9 +41,10 @@ function(tyr_generate_llvm HDRS SRCS RT_OPTIONS)
           OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.bc"
                  "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.h"
           COMMAND tyrc::tyr
-          ARGS -emit-llvm -bind-lang=c -runtime-enable=${RT_OPTIONS} -out-dir=${CMAKE_CURRENT_BINARY_DIR} ${ABS_FIL}
+          ARGS ${RT_OPTIONS}
+          ARGS -emit-llvm -bind-lang=c -out-dir=${CMAKE_CURRENT_BINARY_DIR} ${ABS_FIL}
           DEPENDS ${ABS_FIL} tyrc::tyr
-          COMMENT "Running tyr compiler on ${_FILE}"
+          COMMENT "Running tyr compiler on ${_FILE} with options ${RT_OPTIONS}"
           VERBATIM )
     endforeach()
 
@@ -75,9 +76,10 @@ function(tyr_generate_obj HDRS OBJS RT_OPTIONS)
           OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.o"
                  "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.h"
           COMMAND tyrc::tyr
-          ARGS -bind-lang=c -runtime-enable=${RT_OPTIONS} -out-dir=${CMAKE_CURRENT_BINARY_DIR} ${ABS_FIL}
+          ARGS ${RT_OPTIONS}
+          ARGS -bind-lang=c -out-dir=${CMAKE_CURRENT_BINARY_DIR} ${ABS_FIL}
           DEPENDS ${ABS_FIL} tyrc::tyr
-          COMMENT "Running tyr compiler on ${_FILE}"
+          COMMENT "Running tyr compiler on ${_FILE} with options ${RT_OPTIONS}"
           VERBATIM )
     endforeach()
 

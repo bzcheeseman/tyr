@@ -143,6 +143,7 @@ llvm::Type *tyr::Module::parseType(std::string FieldType, bool IsRepeated) {
 
 namespace {
 const std::string TYR_FILE_HELPER_FILE = "tyr-rt-file.bc";
+const std::string TYR_BASE64_FILE = "tyr-rt-base64.bc";
 
 std::unique_ptr<llvm::Module>
 getModuleFromFile(llvm::LLVMContext &ctx, const std::string &filename,
@@ -184,6 +185,16 @@ bool tyr::Module::linkRuntimeModules(const std::string &Directory,
         getModuleFromFile(m_ctx_, Filename, m_parent_->getTargetTriple()));
   }
 
+  if (rt::isB64Enabled(options)) { // link in the file helpers
+    llvm::SmallVector<char, 100> path{Directory.begin(), Directory.end()};
+    llvm::sys::path::append(path, TYR_BASE64_FILE);
+    llvm::sys::fs::make_absolute(path);
+    const std::string Filename{path.begin(), path.end()};
+
+    OutsideModule.push_back(
+            getModuleFromFile(m_ctx_, Filename, m_parent_->getTargetTriple()));
+  }
+
   if (!OutsideModule.empty()) {
     for (auto &OM : OutsideModule) {
       bool LinkFailed = llvmLinker.linkInModule(std::move(OM));
@@ -222,4 +233,8 @@ llvm::ExecutionEngine *tyr::getExecutionEngine(llvm::Module *Parent) {
   return engine;
 }
 
-bool tyr::rt::isFileEnabled(uint32_t options) { return options & 0b1; }
+bool tyr::rt::isFileEnabled(uint32_t options) { return options & (0b1 << 0); }
+
+bool tyr::rt::isB64Enabled(uint32_t options) {
+  return options & (0b1 << 1);
+}

@@ -11,12 +11,7 @@ endif()
 
 find_program(LLVM_LINK_BIN REQUIRED
         NAMES
-        llvm-link-6.0
-        llvm-link-7
         llvm-link
-
-        llvm-ld-6.0
-        llvm-ld-7
         llvm-ld)
 
 set(CMAKE_LLIR_CREATE_SHARED_LIBRARY "${LLVM_LINK_BIN} -o <TARGET> <OBJECTS>")
@@ -41,14 +36,19 @@ function(add_tyr_rt_bc SUFFIX SOURCE HEADER)
             RULE_LAUNCH_COMPILE "${CLANG_BIN} <DEFINES> <INCLUDES> <FLAGS> -o <OBJECT> -c <SOURCE> #")
     target_compile_options(tyr-rt-${SUFFIX}
             PRIVATE
+            -g0
+            -mtune=generic
+            -march=x86-64
             -flto
             -ffast-math
             -emit-llvm
             -Oz)
+
     add_dependencies(tyr-rt-core tyr-rt-${SUFFIX})
     install(FILES $<TARGET_FILE:tyr-rt-${SUFFIX}> DESTINATION lib/tyr)
+    install(FILES ${HEADER} DESTINATION include/tyr/rt)
 endfunction()
 
 add_tyr_rt_bc(file FileHelper.c FileHelper.h)
+add_tyr_rt_bc(base64 Base64.c Base64.h)
 
-install(FILES ${COMPILE_HEADERS} DESTINATION include/tyr/rt)

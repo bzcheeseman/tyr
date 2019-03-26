@@ -66,7 +66,7 @@ that can then be compiled into a dynamic library (as in the Python case) or just
 as a `.o` argument to `clang` or `gcc`.
 
 ## Usage
-Use `tyr -h` to show all the available options. `tyr` uses an LLVM backend so all the LLVM-supported target triples
+Use `tyr -help` to show all the available options. `tyr` uses an LLVM backend so all the LLVM-supported target triples
 are supported.
 
 ### Native

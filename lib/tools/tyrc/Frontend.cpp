@@ -48,7 +48,8 @@ enum SupportedBindingLanguages {
 };
 
 enum RuntimeOptions {
-  kEnableFileHelper,
+  kEnableFileHelper = 0,
+  kEnableBase64 = 1,
 };
 
 cl::OptionCategory
@@ -77,12 +78,13 @@ cl::opt<SupportedBindingLanguages>
              cl::init(kSBLC),
              cl::cat(tyrCompilerOptions), cl::Hidden);
 
-cl::bits<RuntimeOptions> RuntimeOpts("runtime-enable",
+cl::bits<RuntimeOptions> RuntimeOpts(
         cl::desc("Options for configuring the runtime linking:"),
         cl::values(
-                clEnumValN(kEnableFileHelper, "file-utils", "Disable the file utilities")
+                clEnumValN(kEnableFileHelper, "file-utils", "Enable the file utilities"),
+                clEnumValN(kEnableBase64, "base64", "Enable the base64 utilities")
         ),
-        cl::cat(tyrCompilerOptions));
+        cl::OneOrMore, cl::cat(tyrCompilerOptions));
 
 cl::opt<std::string> Target("target-triple", cl::desc("The target triple"),
                             cl::value_desc("triple"),
