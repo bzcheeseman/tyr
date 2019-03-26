@@ -23,7 +23,7 @@ jobs:
         - mkdir -p build && cd build
         - cmake .. -DCMAKE_INSTALL_PREFIX=../test/install -DBUILD_INTEGRATION_TESTS=OFF
         - make check install
-        - pushd ../test && install/bin/tyr path.tyr -bind-lang=c -emit-llvm -out-dir=./c -runtime-enable=file-utils && popd
+        - pushd ../test && install/bin/tyr path.tyr -bind-lang=c -emit-llvm -out-dir=./c -file-utils -base64 && popd
         - cmake .. -DCMAKE_INSTALL_PREFIX=../test/install -DBUILD_INTEGRATION_TESTS=ON
         - make c_test && ./test/c_test
 
