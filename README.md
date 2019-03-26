@@ -103,7 +103,6 @@ make c_test && ./test/c_test
 
 ## Roadmap (in no particular order)
 - Non-C language support
-- Base64 runtime helper
 - Compression runtime helper
 - Function serialization?
 - Bit-accurate structs as packed ints
