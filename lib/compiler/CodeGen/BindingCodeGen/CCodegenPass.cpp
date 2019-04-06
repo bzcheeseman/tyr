@@ -32,25 +32,19 @@
 namespace {
 llvm::raw_ostream &operator<<(llvm::raw_ostream &out, const llvm::Type *Ty) {
   if (Ty->isIntegerTy()) {
-    switch (Ty->getIntegerBitWidth()) {
-    case 1:
+    uint32_t bitWidth = Ty->getIntegerBitWidth();
+    if (bitWidth == 1) {
       out << "bool ";
-      break;
-    case 8:
+    } else if (bitWidth <= 8) {
       out << "uint8_t ";
-      break;
-    case 16:
+    } else if (bitWidth <= 16) {
       out << "uint16_t ";
-      break;
-    case 32:
+    } else if (bitWidth <= 32) {
       out << "uint32_t ";
-      break;
-    case 64:
+    } else if (bitWidth <= 64) {
       out << "uint64_t ";
-      break;
-    default: {
-      break;
-    }
+    } else {
+      return out;
     }
   } else if (Ty->isFloatingPointTy()) {
     if (Ty->isFloatTy()) {
@@ -134,7 +128,7 @@ bool tyr::pass::CCodegenPass::runOnModule(tyr::Module &m) {
       out << "bool get_" << s.first << "_" << f->name << "(" << PtrName
           << "struct_ptr, " << f->type->getPointerTo(0) << f->name << ");\n";
 
-      if (f->mut) {
+      if (f->isMutable) {
         if (f->isRepeated) {
           out << "bool set_" << s.first << "_" << f->name << "(" << PtrName
               << "struct_ptr, " << f->type << f->name << ", uint64_t "
@@ -149,7 +143,7 @@ bool tyr::pass::CCodegenPass::runOnModule(tyr::Module &m) {
         out << "bool get_" << s.first << "_" << f->name << "_item(" << PtrName
             << "struct_ptr, uint64_t idx, " << f->type << f->name
             << "_item);\n";
-        if (f->mut) {
+        if (f->isMutable) {
           out << "bool set_" << s.first << "_" << f->name << "_item(" << PtrName
               << "struct_ptr, uint64_t idx, "
               << f->type->getPointerElementType() << f->name << "_item);\n";
@@ -158,7 +152,7 @@ bool tyr::pass::CCodegenPass::runOnModule(tyr::Module &m) {
             << "struct_ptr, uint64_t *count);\n";
       }
 
-      if (!f->mut) {
+      if (!f->isMutable) {
         ConstructorFields.push_back(f.get());
       }
     }
@@ -170,7 +164,7 @@ bool tyr::pass::CCodegenPass::runOnModule(tyr::Module &m) {
                 end = ConstructorFields.end() - 1;
            cf != end; ++cf) {
         if ((*cf)->isRepeated) {
-          out << "uint64_t" << (*cf)->name << "_count, ";
+          out << "uint64_t " << (*cf)->name << "_count, ";
         }
 
         out << (*cf)->type << (*cf)->name << ", ";

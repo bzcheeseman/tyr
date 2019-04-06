@@ -27,28 +27,7 @@
 #include <sstream>
 
 tyr::Parser::Parser(tyr::Module &generator)
-    : m_generator_(generator), m_current_struct_(nullptr) {}
-
-namespace {
-bool addField(tyr::Module &m, const std::string &StructName, bool IsMutable,
-              bool IsRepeated, std::string FieldType, std::string FieldName) {
-  llvm::Type *FT = m.parseType(std::move(FieldType), IsRepeated);
-  if (FT == nullptr) {
-    return false;
-  }
-
-  // TODO: handle map fields
-  if (IsRepeated) {
-    m.getOrCreateStruct(StructName)
-        ->addRepeatedField(std::move(FieldName), FT, IsMutable);
-  } else {
-    m.getOrCreateStruct(StructName)
-        ->addField(std::move(FieldName), FT, IsMutable);
-  }
-
-  return true;
-}
-} // namespace
+    : m_module_(generator), m_current_struct_(nullptr) {}
 
 bool tyr::Parser::parseFile(std::istream &input) {
   uint64_t lineno = 0;
@@ -89,6 +68,27 @@ bool tyr::Parser::parseFile(std::istream &input) {
   return true;
 }
 
+namespace {
+  bool addField(tyr::Module &m, const std::string &StructName, bool IsMutable,
+                bool IsRepeated, std::string FieldType, std::string FieldName) {
+    llvm::Type *FT = m.parseType(std::move(FieldType), IsRepeated);
+    if (FT == nullptr) {
+      return false;
+    }
+
+    // TODO: handle map fields
+    if (IsRepeated) {
+      m.getOrCreateStruct(StructName)
+              ->addRepeatedField(std::move(FieldName), FT, IsMutable);
+    } else {
+      m.getOrCreateStruct(StructName)
+              ->addField(std::move(FieldName), FT, IsMutable);
+    }
+
+    return true;
+  }
+} // namespace
+
 bool tyr::Parser::parseLine(const std::vector<std::string> &tokens) {
   if (tokens[0] == "struct") {
     if (m_current_struct_ != nullptr) {
@@ -96,13 +96,13 @@ bool tyr::Parser::parseLine(const std::vector<std::string> &tokens) {
       return false;
     }
     const std::string &StructName = tokens[1];
-    m_current_struct_ = m_generator_.getOrCreateStruct(StructName);
+    m_current_struct_ = m_module_.getOrCreateStruct(StructName);
     m_current_struct_->setIsPacked(tokens.size() == 3 && tokens[2] == "packed");
     return true;
   }
 
   if (tokens[0] == "}") {
-    m_current_struct_->finalizeFields(m_generator_.getModule());
+    m_current_struct_->finalizeFields(m_module_.getModule());
     m_current_struct_ = nullptr;
     return true;
   }
@@ -131,6 +131,6 @@ bool tyr::Parser::parseLine(const std::vector<std::string> &tokens) {
   }
 
   std::string FieldName = *tokens.rbegin();
-  return addField(m_generator_, m_current_struct_->getName(), IsMut, IsRepeated,
+  return addField(m_module_, m_current_struct_->getName(), IsMut, IsRepeated,
                   FieldTy, FieldName);
 }

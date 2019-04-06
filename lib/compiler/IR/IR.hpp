@@ -42,34 +42,39 @@ using FieldPtr = std::unique_ptr<Field>;
 
 class Struct {
 public:
-  explicit Struct(std::string name);
+  explicit Struct(llvm::StringRef name);
+  virtual ~Struct() = default;
 
   void setIsPacked(bool isPacked);
-  void addField(std::string name, llvm::Type *type, bool isMutable);
-  void addRepeatedField(std::string name, llvm::Type *type, bool isMutable);
+  void addField(llvm::StringRef name, llvm::Type *type, bool isMutable);
+  void addRepeatedField(llvm::StringRef name, llvm::Type *type, bool isMutable);
   void finalizeFields(llvm::Module *Parent);
 
   llvm::ArrayRef<FieldPtr> getFields() const;
-  const std::string &getName() const;
+  const llvm::StringRef getName() const;
   llvm::StructType *getType() const;
 
 private:
   const std::string m_name_;
-  bool m_packed_;
-  llvm::StructType *m_type_;
+  bool m_packed_ = false;
+  llvm::StructType *m_type_ = nullptr;
 
   std::vector<FieldPtr> m_fields_;
 };
 
 struct Field {
+  // Basic information
   std::string name;
   llvm::Type *type;
-  bool mut;
-  bool isRepeated;
+  bool isMutable;
+  // If it's a struct we have special handling
   bool isStruct;
+  // Repeated fields
+  bool isRepeated;
   bool isCount;
   Field *countField = nullptr;
   Field *countsFor = nullptr;
+  // LLVM information
   llvm::StructType *parentType;
   uint32_t offset;
 };

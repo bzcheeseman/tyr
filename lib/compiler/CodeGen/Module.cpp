@@ -110,19 +110,26 @@ bool tyr::Module::visit(tyr::ir::Pass &p) {
 
 llvm::Module *tyr::Module::getModule() { return m_parent_.get(); }
 
-llvm::Type *tyr::Module::parseType(std::string FieldType, bool IsRepeated) {
+llvm::Type *tyr::Module::parseType(llvm::StringRef FieldType, bool IsRepeated) {
   llvm::Type *OutTy;
   if (FieldType == "bool") {
     OutTy = llvm::Type::getInt1Ty(m_ctx_);
-  } else if (FieldType == "int8" || FieldType == "uint8" ||
-             FieldType == "byte") {
-    OutTy = llvm::Type::getInt8Ty(m_ctx_);
-  } else if (FieldType == "int16" || FieldType == "uint16") {
-    OutTy = llvm::Type::getInt16Ty(m_ctx_);
-  } else if (FieldType == "int32" || FieldType == "uint32") {
-    OutTy = llvm::Type::getInt32Ty(m_ctx_);
-  } else if (FieldType == "int64" || FieldType == "uint64") {
-    OutTy = llvm::Type::getInt64Ty(m_ctx_);
+  } else if (FieldType.startswith_lower("int") || FieldType.startswith_lower("uint")) {
+    // Find the integer bit width
+    const size_t tIdx = FieldType.rfind_lower("t") + 1;
+    if (tIdx == llvm::StringRef::npos) {
+      llvm::errs() << "Unable to validate type string: " << FieldType << "\n";
+      return nullptr;
+    }
+
+    uint64_t intBits = 0;
+    const uint32_t radix = 10;
+    if (llvm::getAsUnsignedInteger(FieldType.substr(tIdx), radix, intBits)) {
+      llvm::errs() << "Unable to parse integer bit width for field type: " << FieldType << "\n";
+      return nullptr;
+    }
+
+    OutTy = llvm::Type::getIntNTy(m_ctx_, intBits);
   } else if (FieldType == "float") {
     OutTy = llvm::Type::getFloatTy(m_ctx_);
   } else if (FieldType == "double") {

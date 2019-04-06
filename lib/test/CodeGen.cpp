@@ -48,7 +48,7 @@ TEST(CodeGen, verif_correct) {
   s->setIsPacked(true);
 
   s->addField("float", m.parseType("float", false), true);
-  s->addField("int16", m.parseType("int16", false), false);
+  s->addField("int16", m.parseType("int12", false), false);
   s->addRepeatedField("ptr", m.parseType("int8", true), true);
 
   s->finalizeFields(m.getModule());
@@ -69,7 +69,7 @@ TEST(CodeGen, verif_correct_be) {
   s->setIsPacked(true);
 
   s->addField("float", m.parseType("float", false), true);
-  s->addField("int16", m.parseType("int16", false), false);
+  s->addField("int16", m.parseType("int7", false), false);
   s->addRepeatedField("ptr", m.parseType("int8", true), true);
 
   s->finalizeFields(m.getModule());

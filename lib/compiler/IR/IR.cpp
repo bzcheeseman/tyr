@@ -27,11 +27,11 @@
 #include <llvm/IR/Type.h>
 #include <llvm/Support/raw_ostream.h>
 
-tyr::ir::Struct::Struct(std::string name) : m_name_(std::move(name)) {}
+tyr::ir::Struct::Struct(llvm::StringRef name) : m_name_(name) {}
 
 void tyr::ir::Struct::setIsPacked(bool isPacked) { m_packed_ = isPacked; }
 
-void tyr::ir::Struct::addField(std::string name, llvm::Type *type,
+void tyr::ir::Struct::addField(llvm::StringRef name, llvm::Type *type,
                                bool isMutable) {
   llvm::LLVMContext &ctx = type->getContext();
 
@@ -39,7 +39,7 @@ void tyr::ir::Struct::addField(std::string name, llvm::Type *type,
   Field f = {};
   f.name = name;
   f.type = type;
-  f.mut = isMutable;
+  f.isMutable = isMutable;
   f.isRepeated = false;
   f.isStruct =
       type->isPointerTy() && type->getPointerElementType()->isStructTy();
@@ -51,15 +51,15 @@ void tyr::ir::Struct::addField(std::string name, llvm::Type *type,
   m_fields_.push_back(llvm::make_unique<Field>(f));
 }
 
-void tyr::ir::Struct::addRepeatedField(std::string name, llvm::Type *type,
+void tyr::ir::Struct::addRepeatedField(llvm::StringRef name, llvm::Type *type,
                                        bool isMutable) {
   llvm::LLVMContext &ctx = type->getContext();
 
   // Insert the count for the field first
   Field count = {};
-  count.name = name + "_count";
+  count.name = std::string(name) + "_count";
   count.type = llvm::Type::getInt64Ty(ctx);
-  count.mut = isMutable;
+  count.isMutable = isMutable;
   count.isRepeated = false;
   count.isStruct = false;
   count.isCount = true;
@@ -75,7 +75,7 @@ void tyr::ir::Struct::addRepeatedField(std::string name, llvm::Type *type,
   Field f = {};
   f.name = name;
   f.type = type;
-  f.mut = isMutable;
+  f.isMutable = isMutable;
   f.isRepeated = true;
   f.isStruct = false;
   f.isCount = false;
@@ -126,13 +126,13 @@ llvm::ArrayRef<tyr::ir::FieldPtr> tyr::ir::Struct::getFields() const {
   return m_fields_;
 }
 
-const std::string &tyr::ir::Struct::getName() const { return m_name_; }
+const llvm::StringRef tyr::ir::Struct::getName() const { return m_name_; }
 
 llvm::StructType *tyr::ir::Struct::getType() const { return m_type_; }
 
 llvm::raw_ostream &tyr::ir::operator<<(llvm::raw_ostream &os,
                                        const tyr::ir::Field &f) {
-  os << (f.mut ? "mut " : "");
+  os << (f.isMutable ? "isMutable " : "");
   f.type->print(os);
   os << " " << f.name;
   return os;

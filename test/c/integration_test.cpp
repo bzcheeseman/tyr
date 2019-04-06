@@ -30,6 +30,9 @@
 #include <iostream>
 #include <fstream>
 
+const int NUM_ELTS = 512;
+std::chrono::high_resolution_clock::time_point start, stop;
+
 uint8_t *get_serialized_storage(std::vector<float> &x, std::vector<float> &y) {
   path_t *data = create_path(5);
 
@@ -37,7 +40,7 @@ uint8_t *get_serialized_storage(std::vector<float> &x, std::vector<float> &y) {
   std::mt19937 e(rd());
   std::uniform_real_distribution<float> dist(0, 3);
 
-  for (int i = 0; i < 125; ++i) {
+  for (int i = 0; i < NUM_ELTS; ++i) {
     x.push_back(dist(e));
     y.push_back(dist(e));
   }
@@ -47,6 +50,7 @@ uint8_t *get_serialized_storage(std::vector<float> &x, std::vector<float> &y) {
 
   assert(tyr_serialize_to_file("serialized_path.tsf", true, &serialize_path, data));
 
+  start = std::chrono::high_resolution_clock::now();
   uint8_t *out = serialize_path(data);
   destroy_path(data);
   return out;
@@ -54,6 +58,7 @@ uint8_t *get_serialized_storage(std::vector<float> &x, std::vector<float> &y) {
 
 bool check_serialized(uint8_t *serialized, const std::vector<float> &x, const std::vector<float> &y) {
   path_t *deserialized = (path_t *)deserialize_path(serialized);
+  stop = std::chrono::high_resolution_clock::now();
   free(serialized);
 
   uint32_t idx = 0;
@@ -69,7 +74,7 @@ bool check_serialized(uint8_t *serialized, const std::vector<float> &x, const st
   assert(y_count == y.size());
 
   float x_, y_;
-  for (uint64_t i = 0; i < 125; ++i) {
+  for (uint64_t i = 0; i < NUM_ELTS; ++i) {
     get_path_x_item(deserialized, i, &x_);
     get_path_y_item(deserialized, i, &y_);
     assert(x_ == x[i]);
@@ -306,6 +311,8 @@ int main() {
   std::vector<float> x, y;
   uint8_t *serialized = get_serialized_storage(x, y);
   assert(check_serialized(serialized, x, y));
+
+  std::cout << "Time elapsed for serialize/deserialize records (s): " << std::chrono::duration<double>(stop - start).count() << std::endl;
 
   uint8_t *serialized_graph = get_serialized_graph();
   assert(check_graph(serialized_graph));

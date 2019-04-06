@@ -53,7 +53,7 @@ private:
 
 private:
   ir::Struct *m_current_struct_;
-  Module &m_generator_;
+  Module &m_module_;
 };
 } // namespace tyr
 

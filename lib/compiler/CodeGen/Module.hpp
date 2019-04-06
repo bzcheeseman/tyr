@@ -52,7 +52,7 @@ public:
 
   llvm::Module *getModule();
 
-  llvm::Type *parseType(std::string FieldType, bool IsRepeated);
+  llvm::Type *parseType(llvm::StringRef FieldType, bool IsRepeated);
 
   friend llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const Module &m);
 

@@ -224,7 +224,7 @@ bool tyr::pass::LLVMIRGenPass::initField(const tyr::ir::Field *f,
                                          llvm::Value *Struct,
                                          llvm::Argument *Arg,
                                          llvm::IRBuilder<> &builder) {
-  if (f->mut) {
+  if (f->isMutable) {
     // Initialize to zero (still works even if it's a pointer)
     builder.CreateStore(
         builder.CreateTruncOrBitCast(builder.getInt64(0), f->type),
@@ -323,7 +323,7 @@ bool tyr::pass::LLVMIRGenPass::getGetter(const ir::Field *f) const {
   llvm::Value *OutVal = &*arg_iter;
 
   // If it's not mutable alloc a new thing and copy it over
-  if (f->isStruct && !f->mut) {
+  if (f->isStruct && !f->isMutable) {
     // The serializer is just "serialize_<name>"
     std::string FieldSerializerName =
         "serialize_" + std::string(f->type->getStructName());
@@ -341,7 +341,7 @@ bool tyr::pass::LLVMIRGenPass::getGetter(const ir::Field *f) const {
     builder.CreateStore(DeserializedField, OutVal);
     builder.CreateRet(builder.getInt1(true));
     return true;
-  } else if (f->isRepeated && !f->mut) {
+  } else if (f->isRepeated && !f->isMutable) {
     llvm::Value *FieldAllocSize = getFieldAllocSize(f, Self, builder);
 
     llvm::Value *AllocdMem =
@@ -439,7 +439,7 @@ bool tyr::pass::LLVMIRGenPass::getItemGetter(const tyr::ir::Field *f) const {
 }
 
 bool tyr::pass::LLVMIRGenPass::getSetter(const tyr::ir::Field *f) const {
-  if (!f->mut) {
+  if (!f->isMutable) {
     return true;
   }
 
@@ -944,7 +944,7 @@ bool tyr::pass::LLVMIRGenPass::getConstructor(const tyr::ir::Struct *s) {
 
   std::vector<llvm::Type *> NonMutFields;
   for (auto &entry : structFields) {
-    if (!entry->mut) {
+    if (!entry->isMutable) {
       NonMutFields.push_back(entry->type);
     }
   }
@@ -954,7 +954,7 @@ bool tyr::pass::LLVMIRGenPass::getConstructor(const tyr::ir::Struct *s) {
 
   llvm::LLVMContext &ctx = m_parent_->getContext();
 
-  std::string ConstrName = "create_" + s->getName();
+  llvm::Twine ConstrName = "create_" + s->getName();
 
   llvm::StructType *GenStructType = s->getType();
   llvm::Type *StructPtrType = GenStructType->getPointerTo(AddrSpace);
@@ -964,7 +964,7 @@ bool tyr::pass::LLVMIRGenPass::getConstructor(const tyr::ir::Struct *s) {
       llvm::FunctionType::get(StructPtrType, NonMutFields, false);
   // Create the function
   llvm::Function *Constructor = llvm::cast<llvm::Function>(
-      m_parent_->getOrInsertFunction(ConstrName, ConstructorType));
+      m_parent_->getOrInsertFunction(ConstrName.str(), ConstructorType));
   llvm::BasicBlock *EntryBlock = llvm::BasicBlock::Create(ctx, "", Constructor);
   llvm::IRBuilder<> builder(EntryBlock);
 
@@ -986,7 +986,7 @@ bool tyr::pass::LLVMIRGenPass::getConstructor(const tyr::ir::Struct *s) {
   // Initialize all the fields
   auto ArgIter = Constructor->arg_begin();
   for (auto &entry : structFields) {
-    if (!entry->mut) {
+    if (!entry->isMutable) {
       initField(entry.get(), StructOut, &*ArgIter, builder);
       // Only increment the argument iterator if it's not a mutable field
       // otherwise, the field is initialized to zero
@@ -1009,7 +1009,7 @@ bool tyr::pass::LLVMIRGenPass::getDestructor(const tyr::ir::Struct *s) {
   const uint32_t AddrSpace =
       m_parent_->getDataLayout().getProgramAddressSpace();
 
-  std::string DestrName = "destroy_" + s->getName();
+  llvm::Twine DestrName = "destroy_" + s->getName();
 
   llvm::StructType *GenStructType = s->getType();
   llvm::Type *StructPtrType = GenStructType->getPointerTo(AddrSpace);
@@ -1019,7 +1019,7 @@ bool tyr::pass::LLVMIRGenPass::getDestructor(const tyr::ir::Struct *s) {
       llvm::Type::getVoidTy(ctx), {StructPtrType}, false);
 
   llvm::Function *Destructor = llvm::cast<llvm::Function>(
-      m_parent_->getOrInsertFunction(DestrName, DestructorType));
+      m_parent_->getOrInsertFunction(DestrName.str(), DestructorType));
   llvm::BasicBlock *EntryBlock = llvm::BasicBlock::Create(ctx, "", Destructor);
   llvm::IRBuilder<> builder(EntryBlock);
 
@@ -1044,7 +1044,7 @@ bool tyr::pass::LLVMIRGenPass::getSerializer(const tyr::ir::Struct *s) {
   const uint32_t AddrSpace =
       m_parent_->getDataLayout().getProgramAddressSpace();
 
-  std::string Name = "serialize_" + s->getName();
+  llvm::Twine Name = "serialize_" + s->getName();
 
   llvm::StructType *GenStructType = s->getType();
   llvm::Type *StructPtrType = GenStructType->getPointerTo(AddrSpace);
@@ -1055,7 +1055,7 @@ bool tyr::pass::LLVMIRGenPass::getSerializer(const tyr::ir::Struct *s) {
 
   // Create the function
   llvm::Function *Serializer = llvm::cast<llvm::Function>(
-      m_parent_->getOrInsertFunction(Name, SerializerType));
+      m_parent_->getOrInsertFunction(Name.str(), SerializerType));
   llvm::BasicBlock *EntryBlock = llvm::BasicBlock::Create(ctx, "", Serializer);
   llvm::IRBuilder<> builder(EntryBlock);
 
@@ -1121,7 +1121,7 @@ bool tyr::pass::LLVMIRGenPass::getDeserializer(const tyr::ir::Struct *s) {
   const uint32_t AddrSpace =
       m_parent_->getDataLayout().getProgramAddressSpace();
 
-  std::string Name = "deserialize_" + s->getName();
+  llvm::Twine Name = "deserialize_" + s->getName();
 
   llvm::StructType *GenStructType = s->getType();
   llvm::PointerType *StructPtrType = GenStructType->getPointerTo(AddrSpace);
@@ -1131,7 +1131,7 @@ bool tyr::pass::LLVMIRGenPass::getDeserializer(const tyr::ir::Struct *s) {
       StructPtrType, {llvm::Type::getInt8PtrTy(ctx, AddrSpace)}, false);
 
   llvm::Function *Deserializer = llvm::cast<llvm::Function>(
-      m_parent_->getOrInsertFunction(Name, DeserializerType));
+      m_parent_->getOrInsertFunction(Name.str(), DeserializerType));
   llvm::BasicBlock *EntryBlock =
       llvm::BasicBlock::Create(ctx, "", Deserializer);
   llvm::IRBuilder<> builder(EntryBlock);

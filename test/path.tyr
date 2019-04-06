@@ -15,7 +15,7 @@ struct path packed {
 
 struct node {
   // Each node has an immutable identifier
-  int16 id
+  int11 id
   // And a list of data points
   repeated int64 data
 }
