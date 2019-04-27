@@ -53,7 +53,7 @@ tyr <filename> -bind-lang=c -base64 -out-dir=/path/to/out/dir
 ```bash
 cd /path/to/tyr
 docker build . -t tyrc -f docker/Dockerfile
-export TT=$(llvm-config --host-target)
+export TT=$(llvm-config --host-target)  # You have to specify the target triple, because otherwise it'll be compiled for alpine linux (the dockerfile OS)
 docker run -v $(pwd):/opt/local tyrc:latest bash -c "tyr /opt/local/<filename> -bind-lang=c -target-triple=${TT} -file-utils -out-dir=/opt/local"
 ```
 
