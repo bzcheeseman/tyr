@@ -22,6 +22,7 @@
 
 #include "ObjectCodegenPass.hpp"
 #include "Module.hpp"
+#include "Passes.hpp"
 
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/IR/LegacyPassManager.h>
@@ -62,7 +63,7 @@ bool tyr::pass::ObjectCodegenPass::runOnModule(tyr::Module &m) {
   // This generally occurs if we've forgotten to initialise the
   // TargetRegistry or we have a bogus target triple.
   if (!Target) {
-    llvm::errs() << Error;
+    llvm::errs() << Error << "\n";
     return false;
   }
 
@@ -93,6 +94,8 @@ bool tyr::pass::ObjectCodegenPass::runOnModule(tyr::Module &m) {
     return false;
   }
 
+  PM.add(createUnifyFnAttrsPass(m_cpu_, m_features_));
+
   llvm::PassManagerBuilder PMBuilder;
   PMBuilder.OptLevel = 2;
   PMBuilder.SizeLevel = 2;
@@ -105,7 +108,7 @@ bool tyr::pass::ObjectCodegenPass::runOnModule(tyr::Module &m) {
     return false;
   }
 
-  PM.run(*parent);
+  PM.run(*parent); // here
 
   if (llvm::verifyModule(*parent, &llvm::errs())) {
     return false;

@@ -29,8 +29,8 @@
 // We use the encoding from here: https://tools.ietf.org/html/rfc4648#section-5
 // so it's URL safe
 static inline uint8_t b64_index_to_char(uint32_t index) {
-  // 0-25 is capital letters, 26-51 is lowercase, 52-61 is numbers, 62 is '+'
-  // and 63 is '/', and I'm using 64 as '='
+  // 0-25 is capital letters, 26-51 is lowercase, 52-61 is numbers, 62 is '-'
+  // and 63 is '_', and I'm using 64 as '='
   return (uint8_t)(
       index + ('A' * (index < 26)) + (('a' - 26) * (index >= 26 & index < 52)) +
       (('0' - 52) * (index >= 52 & index < 62)) + (('-' - 62) * (index == 62)) +

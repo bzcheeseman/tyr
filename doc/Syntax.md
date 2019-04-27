@@ -25,4 +25,5 @@ struct name <packed> {
 Notes:
  - Fields may be `mutable repeated` or `repeated mutable`. There is no difference.
  - Fields may appear in any order; `tyr` reserves the right to re-order the fields to better pack the 
- structure in memory.
+ structure in memory. This happens exactly once, once the struct is compiled to code, the
+ fields will *not* be reorganized.

@@ -114,7 +114,8 @@ llvm::Type *tyr::Module::parseType(llvm::StringRef FieldType, bool IsRepeated) {
   llvm::Type *OutTy;
   if (FieldType == "bool") {
     OutTy = llvm::Type::getInt1Ty(m_ctx_);
-  } else if (FieldType.startswith_lower("int") || FieldType.startswith_lower("uint")) {
+  } else if (FieldType.startswith_lower("int") ||
+             FieldType.startswith_lower("uint")) {
     // Find the integer bit width
     const size_t tIdx = FieldType.rfind_lower("t") + 1;
     if (tIdx == llvm::StringRef::npos) {
@@ -125,7 +126,8 @@ llvm::Type *tyr::Module::parseType(llvm::StringRef FieldType, bool IsRepeated) {
     uint64_t intBits = 0;
     const uint32_t radix = 10;
     if (llvm::getAsUnsignedInteger(FieldType.substr(tIdx), radix, intBits)) {
-      llvm::errs() << "Unable to parse integer bit width for field type: " << FieldType << "\n";
+      llvm::errs() << "Unable to parse integer bit width for field type: "
+                   << FieldType << "\n";
       return nullptr;
     }
 

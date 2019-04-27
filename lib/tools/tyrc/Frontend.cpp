@@ -68,15 +68,14 @@ cl::opt<std::string> ModuleName("module-name",
                                 cl::desc("Override the module name manually"),
                                 cl::init(""), cl::cat(tyrCompilerOptions), cl::Hidden);
 
-cl::opt<SupportedBindingLanguages>
+cl::bits<SupportedBindingLanguages>
     BindLang("bind-lang",
-             cl::desc("Set the langauge in which to emit bindings:"),
+             cl::desc("Available binding languages:"),
              cl::values(
                     clEnumValN(kSBLC, "c", "Generate C bindings (header file)"),
-                    clEnumValN(kSBLRust, "rust", "Generate rust bindings (.h file and build.rs file from that)")
+                    clEnumValN(kSBLRust, "rust", "Generate rust bindings (.h file and build_*_bindings.rs file from that)")
              ),
-             cl::init(kSBLC),
-             cl::cat(tyrCompilerOptions), cl::Hidden);
+             cl::OneOrMore, cl::cat(tyrCompilerOptions));
 
 cl::bits<RuntimeOptions> RuntimeOpts(
         cl::desc("Options for configuring the runtime linking:"),
@@ -84,7 +83,7 @@ cl::bits<RuntimeOptions> RuntimeOpts(
                 clEnumValN(kEnableFileHelper, "file-utils", "Enable the file utilities"),
                 clEnumValN(kEnableBase64, "base64", "Enable the base64 utilities")
         ),
-        cl::OneOrMore, cl::cat(tyrCompilerOptions));
+        cl::ZeroOrMore, cl::cat(tyrCompilerOptions));
 
 cl::opt<std::string> Target("target-triple", cl::desc("The target triple"),
                             cl::value_desc("triple"),
@@ -165,22 +164,14 @@ int main(int argc, char *argv[]) {
     PM.registerPass(tyr::pass::createObjectCodegenPass(CPU.getValue(), Features.getValue(), OutputDir.getValue()));
   }
 
-  switch (BindLang.getValue()) {
-    case kSBLC: {
-      // Initialize the C binding
-      PM.registerPass(tyr::pass::createCCodegenPass(OutputDir, RuntimeOpts.getBits()));
-      break;
-    }
-    case kSBLRust: {
-      // TODO: remove me when it works better
-      llvm::outs() << "Rust support is still untested and experimental!\n";
-      if (EmitLLVM) {
-        llvm::errs() << "Must build object file when using rust bindings\n";
-        return INVALID_ARGUMENT;
-      }
-      // Initialize the Rust binding
-      PM.registerPass(tyr::pass::createRustCodegenPass(OutputDir, RuntimeOpts.getBits()));
-    }
+  if (BindLang.isSet(kSBLC)) {
+    // Initialize the C binding
+    PM.registerPass(tyr::pass::createCCodegenPass(OutputDir, RuntimeOpts.getBits()));
+  }
+
+  if (BindLang.isSet(kSBLRust)) {
+    // Initialize the Rust binding
+    PM.registerPass(tyr::pass::createRustCodegenPass(OutputDir, RuntimeOpts.getBits()));
   }
 
   // Link the runtime

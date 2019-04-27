@@ -48,7 +48,7 @@ uint8_t *get_serialized_storage(std::vector<float> &x, std::vector<float> &y) {
   set_path_x(data, x.data(), x.size());
   set_path_y(data, y.data(), y.size());
 
-  assert(tyr_serialize_to_file("serialized_path.tsf", true, &serialize_path, data));
+  assert(tyr_serialize_to_file("serialized_path.tsf", &serialize_path, data));
 
   start = std::chrono::high_resolution_clock::now();
   uint8_t *out = serialize_path(data);
@@ -136,7 +136,7 @@ uint8_t *get_serialized_graph() {
     }
   }
 
-  assert(tyr_serialize_to_file("serialized_graph.tsf", true, &serialize_graph, g));
+  assert(tyr_serialize_to_file("serialized_graph.tsf", &serialize_graph, g));
 
   uint8_t *serialized = serialize_graph(g);
   destroy_graph(g);

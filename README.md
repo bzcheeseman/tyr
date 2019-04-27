@@ -39,15 +39,18 @@ reference to accommodate this pattern. If the function returns a pointer, it wil
 
 ## Why use tyr?
 tyr compiles to LLVM IR directly, or even just an object file. This means that its output
-can be very small, depending on the size of your struct - the example above produces a 1.7K 
-object file and a 4.7K LLVM bitcode file. It also doesn't use any external libraries to do 
-any part of its work, in fact, the only non-generated functions it calls are `malloc`, `realloc` 
-and `free`. This means that you can ship your tyr generated code to anywhere that has the C 
-standard library installed (so pretty much any Unix system).
+can be very small, depending on the size of your struct. It also doesn't use any external libraries 
+to do any part of its work, in fact, the only non-generated functions it calls are `malloc`,
+`realloc` and `free`. This means that you can ship your tyr generated code to anywhere that has 
+the C standard library installed (so pretty much any Unix system).
 
 tyr also ships with a small runtime of supporting libraries. These are designed to be lightweight
 and POSIX compliant, so they should also run anywhere that has the C standard library. They are
-enabled by default but they can be disabled by passing the `-no-link-rt` flag to the tyr compiler.
+disabled by default, but can be enabled by passing in flags corresponding to the desired runtime
+libs. Currently we have:
+
+ - Base64: enables Base64 encoding according to [this rfc](https://tools.ietf.org/html/rfc4648#section-5). Enabled by passing the `-base64` command line option.
+ - File Helper: helper functions for writing to and reading from files. Enabled by passing the `-file-utils` command line option.
 
 ## How to contribute
 Literally anywhere you see the need. The bullets in the Roadmap section are a great place
@@ -71,7 +74,7 @@ are supported.
 
 ### Native
 ```bash
-tyr <filename> -bind-lang=[c/python] -out-dir=/path/to/out/dir
+tyr <filename> -bind-lang=[c/rust] <runtime_flags> -out-dir=/path/to/out/dir
 ```
 
 ### Docker (build + run)

@@ -40,12 +40,11 @@ typedef void *(*deserializer_fn)(uint8_t *);
  * successfully.
  *
  * @param filename The name of the file to write into
- * @param exist_ok If it's OK to overwrite a file that may exist under that name
  * @param s The serializer function for the tyr struct
  * @param tyr_struct_ptr A pointer to the tyr struct
  * @return true on success, false on failure
  */
-bool tyr_serialize_to_file(const char *filename, bool exist_ok, serializer_fn s,
+bool tyr_serialize_to_file(const char *filename, serializer_fn s,
                            void *tyr_struct_ptr);
 
 /**

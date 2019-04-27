@@ -33,7 +33,7 @@ mod tests {
             assert!(!serialized.is_null());
             destroy_path(data);
 
-            let deserialized = deserialize_path(serialized);
+            let _deserialized = deserialize_path(serialized);
         }
     }
 }

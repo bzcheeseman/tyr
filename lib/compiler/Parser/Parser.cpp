@@ -69,24 +69,24 @@ bool tyr::Parser::parseFile(std::istream &input) {
 }
 
 namespace {
-  bool addField(tyr::Module &m, const std::string &StructName, bool IsMutable,
-                bool IsRepeated, std::string FieldType, std::string FieldName) {
-    llvm::Type *FT = m.parseType(std::move(FieldType), IsRepeated);
-    if (FT == nullptr) {
-      return false;
-    }
-
-    // TODO: handle map fields
-    if (IsRepeated) {
-      m.getOrCreateStruct(StructName)
-              ->addRepeatedField(std::move(FieldName), FT, IsMutable);
-    } else {
-      m.getOrCreateStruct(StructName)
-              ->addField(std::move(FieldName), FT, IsMutable);
-    }
-
-    return true;
+bool addField(tyr::Module &m, const std::string &StructName, bool IsMutable,
+              bool IsRepeated, std::string FieldType, std::string FieldName) {
+  llvm::Type *FT = m.parseType(std::move(FieldType), IsRepeated);
+  if (FT == nullptr) {
+    return false;
   }
+
+  // TODO: handle map fields
+  if (IsRepeated) {
+    m.getOrCreateStruct(StructName)
+        ->addRepeatedField(std::move(FieldName), FT, IsMutable);
+  } else {
+    m.getOrCreateStruct(StructName)
+        ->addField(std::move(FieldName), FT, IsMutable);
+  }
+
+  return true;
+}
 } // namespace
 
 bool tyr::Parser::parseLine(const std::vector<std::string> &tokens) {

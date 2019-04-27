@@ -28,24 +28,13 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-bool tyr_serialize_to_file(const char *filename, bool exist_ok, serializer_fn s,
+bool tyr_serialize_to_file(const char *filename, serializer_fn s,
                            void *tyr_struct_ptr) {
-  uint32_t open_flags = O_WRONLY | O_CREAT;
-  if (!exist_ok) {
-    open_flags |= O_EXCL;
-  } else if (exist_ok) {
-    open_flags |= O_TRUNC;
-  }
 
-  int fd = open(filename, open_flags, S_IRUSR | S_IWUSR);
-  if (fd < 0) {
-    if (errno == EEXIST) {
-      printf("File %s already exists, aborting\n", filename);
-      return false;
-    } else {
-      printf("Open failed with error code %d, aborting\n", errno);
-      return false;
-    }
+  FILE *file = fopen(filename, "wb");
+  if (file == NULL) {
+    printf("Open failed with error code %d, aborting\n", errno);
+    return false;
   }
 
   uint8_t *serialized = s(tyr_struct_ptr);
@@ -56,23 +45,15 @@ bool tyr_serialize_to_file(const char *filename, bool exist_ok, serializer_fn s,
 
   // First 64 bits are the length of the whole buffer
   uint64_t serialized_len = *((uint64_t *)serialized);
-  // Attempt to write the whole buffer
-  ssize_t write_ptr = write(fd, serialized, serialized_len);
-  size_t written = write_ptr;
-  while (written < serialized_len && write_ptr > 0) {
-    // write whatever is left
-    write_ptr = write(fd, serialized + written, serialized_len - written);
-    // Advance written
-    written += write_ptr;
-  }
 
-  // We exited the loop in a failure mode
-  if (write_ptr < 0) {
+  size_t items_written = fwrite(serialized, sizeof(uint8_t),
+                                serialized_len / sizeof(uint8_t), file);
+  if (items_written != serialized_len / sizeof(uint8_t)) {
     printf("Write to file failed with error %d, aborting\n", errno);
     return false;
   }
 
-  close(fd);
+  fclose(file);
   return true;
 }
 
