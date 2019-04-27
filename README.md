@@ -32,11 +32,31 @@ path_ptr deserialize_path(uint8_t *serialized_struct);
 ```
 in the form of either an LLVM bitcode file or an object file. It also generates bindings 
 for using the generated  object in one of the supported languages. Currently, we support 
-`C` by generating a header file, and `rust` by generating a `C` header and then using the `bindgen`
-library to generate the rust bindings.
+C by generating a header file, and rust by generating a C header and then using the `bindgen`
+library to generate the rust bindings. You can specify which language(s) to generate bindings for with 
+the `-bind-lang` command line flag. Accepted values are `c` or `rust`. You can also generate bindings 
+for multiple languages by passing multiple `bind-lang` flags.
 
 Most tyr generated function returns `true` on success and `false` on error. The getters return by 
 reference to accommodate this pattern. If the function returns a pointer, it will be NULL on failure.
+
+## Usage
+Use `tyr -help` to show all the available options. `tyr` uses an LLVM backend so all the LLVM-supported target triples
+are supported. Examples for common cases follow.
+
+### Native
+```bash
+tyr <filename> -bind-lang=c -base64 -out-dir=/path/to/out/dir
+```
+
+### Docker (build + run)
+```bash
+cd /path/to/tyr
+docker build . -t tyrc -f docker/Dockerfile
+export TT=$(llvm-config --host-target)
+docker run -v $(pwd):/opt/local tyrc:latest bash -c "tyr /opt/local/<filename> -bind-lang=c -target-triple=${TT} -file-utils -out-dir=/opt/local"
+```
+
 
 ## Why use tyr?
 
@@ -78,23 +98,6 @@ tyr's compiler operates by reading and parsing struct declarations like the one 
 and generating LLVM IR. It then passes that through a backend to produce an object file
 that can then be compiled into a dynamic/static library or just used
 as a `.o` argument to `clang` or `gcc`.
-
-## Usage
-Use `tyr -help` to show all the available options. `tyr` uses an LLVM backend so all the LLVM-supported target triples
-are supported.
-
-### Native
-```bash
-tyr <filename> -bind-lang=[c/rust] <runtime_flags> -out-dir=/path/to/out/dir
-```
-
-### Docker (build + run)
-```bash
-cd /path/to/tyr
-docker build . -t tyrc -f docker/Dockerfile
-export TT=$(llvm-config --host-target)
-docker run -v $(pwd):/opt/local tyrc:latest bash -c "tyr /opt/local/<filename> -bind-lang=[c/python] -target-triple=${TT}"
-```
 
 ## Requirements for building tyr
 ```
