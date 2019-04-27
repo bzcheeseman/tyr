@@ -30,5 +30,5 @@ matrix:
         - cmake .. -DCMAKE_INSTALL_PREFIX=../test/install -DBUILD_INTEGRATION_TESTS=OFF
         - make check install
         - pushd ../test && install/bin/tyr path.tyr -bind-lang=rust -emit-llvm -out-dir=./rust -file-utils -base64 && popd
-        - pushd ../rust && cargo test
+        - pushd ../test/rust && cargo test
 
