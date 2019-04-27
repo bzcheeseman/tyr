@@ -32,7 +32,8 @@ path_ptr deserialize_path(uint8_t *serialized_struct);
 ```
 in the form of either an LLVM bitcode file or an object file. It also generates bindings 
 for using the generated  object in one of the supported languages. Currently, we support 
-`C` by generating a header file.
+`C` by generating a header file, and `rust` by generating a `C` header and then using the `bindgen`
+library to generate the rust bindings.
 
 Most tyr generated function returns `true` on success and `false` on error. The getters return by 
 reference to accommodate this pattern. If the function returns a pointer, it will be NULL on failure.
@@ -46,7 +47,7 @@ to do any part of its work, in fact, the only non-generated functions it calls a
 `realloc` and `free`. This means that you can ship your tyr generated code to anywhere that has 
 the C standard library installed (so pretty much any Unix system).
 
-### tyr support runtime
+### tyr includes a support runtime
 tyr also ships with a small runtime of supporting libraries. These are designed to be lightweight
 and POSIX compliant, so they should also run anywhere that has the C standard library. They are
 disabled by default, but can be enabled by passing in flags corresponding to the desired runtime
@@ -55,8 +56,11 @@ libs. Currently we have:
  - Base64: enables Base64 encoding according to [this rfc](https://tools.ietf.org/html/rfc4648#section-5). Enabled by passing the `-base64` command line option.
  - File Helper: helper functions for writing to and reading from files. Enabled by passing the `-file-utils` command line option.
  
+These functions are included directly in the tyr generated code, which means that if you install to a system location, you can just use them
+without having to link any libraries except for the C standard library.
+ 
 ### tyr is configurable
-tyr is highly configurable - inspired by LLVM pretty much anything you want to do with the tyr IR can be done with a `Pass`. Every operation after the parser is 
+tyr is highly configurable; inspired by LLVM, pretty much anything you want to do with the tyr IR can be done with a `Pass`. Every operation after the parser is 
 a pass, and adding your own operation that acts on the tyr IR is very easy. See the various codegen passes as an example.
 
 ## How to contribute
