@@ -38,12 +38,15 @@ Most tyr generated function returns `true` on success and `false` on error. The 
 reference to accommodate this pattern. If the function returns a pointer, it will be NULL on failure.
 
 ## Why use tyr?
+
+### tyr is *small*
 tyr compiles to LLVM IR directly, or even just an object file. This means that its output
 can be very small, depending on the size of your struct. It also doesn't use any external libraries 
 to do any part of its work, in fact, the only non-generated functions it calls are `malloc`,
 `realloc` and `free`. This means that you can ship your tyr generated code to anywhere that has 
 the C standard library installed (so pretty much any Unix system).
 
+### tyr support runtime
 tyr also ships with a small runtime of supporting libraries. These are designed to be lightweight
 and POSIX compliant, so they should also run anywhere that has the C standard library. They are
 disabled by default, but can be enabled by passing in flags corresponding to the desired runtime
@@ -51,6 +54,10 @@ libs. Currently we have:
 
  - Base64: enables Base64 encoding according to [this rfc](https://tools.ietf.org/html/rfc4648#section-5). Enabled by passing the `-base64` command line option.
  - File Helper: helper functions for writing to and reading from files. Enabled by passing the `-file-utils` command line option.
+ 
+### tyr is configurable
+tyr is highly configurable - inspired by LLVM pretty much anything you want to do with the tyr IR can be done with a `Pass`. Every operation after the parser is 
+a pass, and adding your own operation that acts on the tyr IR is very easy. See the various codegen passes as an example.
 
 ## How to contribute
 Literally anywhere you see the need. The bullets in the Roadmap section are a great place
@@ -65,7 +72,7 @@ code generation to make it easier to use.
 ## Compiler
 tyr's compiler operates by reading and parsing struct declarations like the one above
 and generating LLVM IR. It then passes that through a backend to produce an object file
-that can then be compiled into a dynamic library (as in the Python case) or just used
+that can then be compiled into a dynamic/static library or just used
 as a `.o` argument to `clang` or `gcc`.
 
 ## Usage
