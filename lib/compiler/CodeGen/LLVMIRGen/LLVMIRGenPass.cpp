@@ -302,7 +302,7 @@ bool tyr::pass::LLVMIRGenPass::getGetter(const ir::Field *f) const {
   // Create the function
   llvm::Function *Getter = llvm::cast<llvm::Function>(
       m_parent_->getOrInsertFunction(GetterName, GetterType));
-  Getter->addFnAttr(llvm::Attribute::AlwaysInline);
+  Getter->addFnAttr(llvm::Attribute::InlineHint);
 
   llvm::BasicBlock *GetterBlock = llvm::BasicBlock::Create(ctx, "", Getter);
   llvm::IRBuilder<> builder(GetterBlock);
@@ -394,7 +394,7 @@ bool tyr::pass::LLVMIRGenPass::getItemGetter(const tyr::ir::Field *f) const {
   // Create the function
   llvm::Function *Getter = llvm::cast<llvm::Function>(
       m_parent_->getOrInsertFunction(GetterName, GetterType));
-  Getter->addFnAttr(llvm::Attribute::AlwaysInline);
+  Getter->addFnAttr(llvm::Attribute::InlineHint);
 
   llvm::BasicBlock *GetterBlock = llvm::BasicBlock::Create(ctx, "", Getter);
   llvm::IRBuilder<> builder(GetterBlock);
@@ -474,7 +474,7 @@ bool tyr::pass::LLVMIRGenPass::getSetter(const tyr::ir::Field *f) const {
   // Create the function
   llvm::Function *Setter = llvm::cast<llvm::Function>(
       m_parent_->getOrInsertFunction(SetterName, SetterType));
-  Setter->addFnAttr(llvm::Attribute::AlwaysInline);
+  Setter->addFnAttr(llvm::Attribute::InlineHint);
 
   llvm::BasicBlock *SetterBlock = llvm::BasicBlock::Create(ctx, "", Setter);
   llvm::IRBuilder<> builder(SetterBlock);
@@ -673,7 +673,7 @@ bool tyr::pass::LLVMIRGenPass::getItemSetter(const tyr::ir::Field *f) const {
   // Create the function
   llvm::Function *Setter = llvm::cast<llvm::Function>(
       m_parent_->getOrInsertFunction(SetterName, SetterType));
-  Setter->addFnAttr(llvm::Attribute::AlwaysInline);
+  Setter->addFnAttr(llvm::Attribute::InlineHint);
 
   llvm::BasicBlock *SetterBlock = llvm::BasicBlock::Create(ctx, "", Setter);
   llvm::IRBuilder<> builder(SetterBlock);
@@ -755,6 +755,7 @@ bool tyr::pass::LLVMIRGenPass::getSerializer(const tyr::ir::Field *f) const {
   llvm::Function *Serializer = llvm::cast<llvm::Function>(
       m_parent_->getOrInsertFunction(Name, SerializerType));
   Serializer->addFnAttr(llvm::Attribute::AlwaysInline);
+  Serializer->setLinkage(llvm::GlobalValue::PrivateLinkage);
 
   llvm::BasicBlock *EntryBlock = llvm::BasicBlock::Create(ctx, "", Serializer);
   llvm::IRBuilder<> builder(EntryBlock);
@@ -857,6 +858,7 @@ bool tyr::pass::LLVMIRGenPass::getDeserializer(const tyr::ir::Field *f) const {
   llvm::Function *Deserializer = llvm::cast<llvm::Function>(
       m_parent_->getOrInsertFunction(Name, DeserializerType));
   Deserializer->addFnAttr(llvm::Attribute::AlwaysInline);
+  Deserializer->setLinkage(llvm::GlobalValue::PrivateLinkage);
 
   llvm::BasicBlock *EntryBlock =
       llvm::BasicBlock::Create(ctx, "", Deserializer);
@@ -977,6 +979,8 @@ bool tyr::pass::LLVMIRGenPass::getConstructor(const tyr::ir::Struct *s) {
   // Create the function
   llvm::Function *Constructor = llvm::cast<llvm::Function>(
       m_parent_->getOrInsertFunction(ConstrName.str(), ConstructorType));
+  Constructor->addFnAttr(llvm::Attribute::InlineHint);
+
   llvm::BasicBlock *EntryBlock = llvm::BasicBlock::Create(ctx, "", Constructor);
   llvm::IRBuilder<> builder(EntryBlock);
 
@@ -1032,6 +1036,8 @@ bool tyr::pass::LLVMIRGenPass::getDestructor(const tyr::ir::Struct *s) {
 
   llvm::Function *Destructor = llvm::cast<llvm::Function>(
       m_parent_->getOrInsertFunction(DestrName.str(), DestructorType));
+  Destructor->addFnAttr(llvm::Attribute::InlineHint);
+
   llvm::BasicBlock *EntryBlock = llvm::BasicBlock::Create(ctx, "", Destructor);
   llvm::IRBuilder<> builder(EntryBlock);
 
@@ -1068,6 +1074,8 @@ bool tyr::pass::LLVMIRGenPass::getSerializer(const tyr::ir::Struct *s) {
   // Create the function
   llvm::Function *Serializer = llvm::cast<llvm::Function>(
       m_parent_->getOrInsertFunction(Name.str(), SerializerType));
+  Serializer->addFnAttr(llvm::Attribute::InlineHint);
+
   llvm::BasicBlock *EntryBlock = llvm::BasicBlock::Create(ctx, "", Serializer);
   llvm::IRBuilder<> builder(EntryBlock);
 
@@ -1144,6 +1152,8 @@ bool tyr::pass::LLVMIRGenPass::getDeserializer(const tyr::ir::Struct *s) {
 
   llvm::Function *Deserializer = llvm::cast<llvm::Function>(
       m_parent_->getOrInsertFunction(Name.str(), DeserializerType));
+  Deserializer->addFnAttr(llvm::Attribute::InlineHint);
+
   llvm::BasicBlock *EntryBlock =
       llvm::BasicBlock::Create(ctx, "", Deserializer);
   llvm::IRBuilder<> builder(EntryBlock);

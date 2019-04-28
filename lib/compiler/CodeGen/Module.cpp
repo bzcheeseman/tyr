@@ -180,9 +180,9 @@ getModuleFromFile(llvm::LLVMContext &ctx, const std::string &filename,
 
 bool tyr::Module::linkRuntimeModules(const std::string &Directory,
                                      uint32_t options) {
-  llvm::Linker llvmLinker{*m_parent_};
+  llvm::Linker Linker{*m_parent_};
 
-  llvm::SmallVector<std::unique_ptr<llvm::Module>, 3> OutsideModule = {};
+  llvm::SmallVector<std::unique_ptr<llvm::Module>, 3> OutsideModules = {};
 
   if (rt::isFileEnabled(options)) { // link in the file helpers
     llvm::SmallVector<char, 100> path{Directory.begin(), Directory.end()};
@@ -190,7 +190,7 @@ bool tyr::Module::linkRuntimeModules(const std::string &Directory,
     llvm::sys::fs::make_absolute(path);
     const std::string Filename{path.begin(), path.end()};
 
-    OutsideModule.push_back(
+    OutsideModules.push_back(
         getModuleFromFile(m_ctx_, Filename, m_parent_->getTargetTriple()));
   }
 
@@ -200,13 +200,13 @@ bool tyr::Module::linkRuntimeModules(const std::string &Directory,
     llvm::sys::fs::make_absolute(path);
     const std::string Filename{path.begin(), path.end()};
 
-    OutsideModule.push_back(
+    OutsideModules.push_back(
         getModuleFromFile(m_ctx_, Filename, m_parent_->getTargetTriple()));
   }
 
-  if (!OutsideModule.empty()) {
-    for (auto &OM : OutsideModule) {
-      bool LinkFailed = llvmLinker.linkInModule(std::move(OM));
+  if (!OutsideModules.empty()) {
+    for (auto &OM : OutsideModules) {
+      bool LinkFailed = Linker.linkInModule(std::move(OM));
       if (LinkFailed) {
         llvm::errs() << "Linking modules failed for options ";
         llvm::errs().write_hex(options);
@@ -242,6 +242,6 @@ llvm::ExecutionEngine *tyr::getExecutionEngine(llvm::Module *Parent) {
   return engine;
 }
 
-bool tyr::rt::isFileEnabled(uint32_t options) { return options & (0b1 << 0); }
+bool tyr::rt::isFileEnabled(uint32_t options) { return options & (0b1u << 0); }
 
-bool tyr::rt::isB64Enabled(uint32_t options) { return options & (0b1 << 1); }
+bool tyr::rt::isB64Enabled(uint32_t options) { return options & (0b1u << 1); }

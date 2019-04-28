@@ -42,6 +42,8 @@ public:
       F.addFnAttr("target-cpu", m_cpu_);
       F.removeFnAttr("target-features");
       F.addFnAttr("target-features", m_features_);
+
+      F.setCallingConv(llvm::CallingConv::Fast);
     }
 
     return true;
