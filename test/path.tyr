@@ -1,6 +1,11 @@
 /*
  * tyr uses C-style comments - so this is a block comment
+ * Note that block comments must occupy their own lines,
+ * they can't overlap with code
  */
+
+ /* This is also
+    a block comment */
 
 // And this is a line comment
 

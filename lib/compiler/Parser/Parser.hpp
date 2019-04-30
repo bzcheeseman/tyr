@@ -50,7 +50,7 @@ public:
   bool parseFile(std::istream &input);
 
 private:
-  bool parseLine(const llvm::ArrayRef<std::string> tokens);
+  bool parseLine(const llvm::ArrayRef<llvm::StringRef> tokens);
 
 private:
   ir::Struct *m_current_struct_;
