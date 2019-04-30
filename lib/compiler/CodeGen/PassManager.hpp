@@ -25,7 +25,7 @@
 
 #include "Pass.hpp"
 
-#include <vector>
+#include <llvm/ADT/SmallVector.h>
 
 namespace tyr {
 class Module;
