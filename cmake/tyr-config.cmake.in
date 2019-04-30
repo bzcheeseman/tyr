@@ -58,7 +58,7 @@ endfunction()
 function(tyr_generate_obj HDRS OBJS RT_OPTIONS)
 
     if(NOT ARGN)
-        message(SEND_ERROR "Error: tyr_generate_c called without any tyr files")
+        message(SEND_ERROR "Error: tyr_generate_obj called without any tyr files")
         return()
     endif(NOT ARGN)
 

@@ -32,6 +32,7 @@ using namespace tyr;
 TEST(Parser, basic_C) {
   llvm::LLVMContext ctx;
   Module m{"basic_test_c", ctx};
+  m.setDefaultBuiltins();
 
   std::string struct_def = "struct test_struct {\n"
                            "  mutable int16 int_field\n"

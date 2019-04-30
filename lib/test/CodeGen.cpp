@@ -42,6 +42,7 @@ namespace {
 TEST(CodeGen, verif_correct) {
   llvm::LLVMContext ctx;
   tyr::Module m{"test_module", ctx};
+  m.setDefaultBuiltins();
   m.setTargetTriple("wasm32-unknown-unknown-wasm");
 
   tyr::ir::Struct *s = m.getOrCreateStruct("test");
@@ -63,6 +64,7 @@ TEST(CodeGen, verif_correct) {
 TEST(CodeGen, verif_correct_be) {
   llvm::LLVMContext ctx;
   tyr::Module m{"test_module", ctx};
+  m.setDefaultBuiltins();
   m.setTargetTriple("aarch64_be-unknown-unknown");
 
   tyr::ir::Struct *s = m.getOrCreateStruct("test");
@@ -84,6 +86,7 @@ TEST(CodeGen, verif_correct_be) {
 TEST(CodeGen, code_correct) {
   llvm::LLVMContext ctx;
   tyr::Module m{"test_module", ctx};
+  m.setDefaultBuiltins();
 
   tyr::ir::Struct *s = m.getOrCreateStruct("test");
   s->setIsPacked(true);

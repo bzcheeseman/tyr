@@ -64,8 +64,9 @@ docker run -v $(pwd):/opt/local tyrc:latest bash -c "tyr /opt/local/<filename> -
 tyr compiles to LLVM IR directly, or even just an object file. This means that its output
 can be very small, depending on the size of your struct. It also doesn't use any external libraries 
 to do any part of its work, in fact, the only non-generated functions it calls are `malloc`,
-`realloc` and `free`. This means that you can ship your tyr generated code to anywhere that has 
-the C standard library installed (so pretty much any Unix system).
+`realloc` and `free`; and even those can be overridden at runtime with command line flags.
+This means that you can ship your tyr generated code to anywhere that has a version of
+those 3 functions - so pretty much any Unix system at least.
 
 ### tyr includes a support runtime
 tyr also ships with a small runtime of supporting libraries. These are designed to be lightweight
@@ -125,3 +126,4 @@ make c_test && ./test/c_test
 - Function serialization?
 - Bit-accurate structs as packed ints
 - Add map support
+- Clean up examples/integration tests

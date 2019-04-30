@@ -45,6 +45,7 @@ public:
   void setSourceFileName(const llvm::StringRef SourceFilename);
   void setBuiltinName(const llvm::StringRef Which, const llvm::StringRef New);
   void finalizeBuiltins();
+  void setDefaultBuiltins();
 
   ir::Struct *getOrCreateStruct(const llvm::StringRef name);
   const llvm::StringMap<ir::Struct *> &getStructs() const;

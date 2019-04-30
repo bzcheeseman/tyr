@@ -243,6 +243,13 @@ bool tyr::Module::linkRuntimeModules(const llvm::StringRef Directory,
   return true;
 }
 
+void tyr::Module::setDefaultBuiltins() {
+  setBuiltinName("malloc", "malloc");
+  setBuiltinName("realloc", "realloc");
+  setBuiltinName("free", "free");
+  finalizeBuiltins();
+}
+
 llvm::ExecutionEngine *tyr::getExecutionEngine(llvm::Module *Parent) {
   llvm::InitializeAllTargetInfos();
   llvm::InitializeAllTargets();
