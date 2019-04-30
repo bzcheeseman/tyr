@@ -24,6 +24,7 @@
 #define TYR_CBINDINGVISITOR_HPP
 
 #include <string>
+#include <llvm/ADT/StringRef.h>
 
 #include "Pass.hpp"
 
@@ -31,7 +32,7 @@ namespace tyr {
 namespace pass {
 class CCodegenPass : public ir::Pass {
 public:
-  explicit CCodegenPass(const std::string &OutputDir, uint32_t RTOptions);
+  explicit CCodegenPass(const llvm::StringRef OutputDir, uint32_t RTOptions);
 
   std::string getName() override;
   bool runOnModule(Module &m) override;
@@ -41,7 +42,7 @@ private:
   const uint32_t m_rt_options_;
 };
 
-ir::Pass::Ptr createCCodegenPass(const std::string &OutputDir,
+ir::Pass::Ptr createCCodegenPass(const llvm::StringRef OutputDir,
                                  uint32_t RTOptions);
 } // namespace pass
 } // namespace tyr

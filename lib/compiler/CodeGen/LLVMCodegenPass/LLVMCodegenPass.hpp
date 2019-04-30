@@ -24,6 +24,7 @@
 #define TYR_LLVMCODEGENPASS_HPP
 
 #include <string>
+#include <llvm/ADT/StringRef.h>
 
 #include "Pass.hpp"
 
@@ -37,8 +38,8 @@ class Module;
 namespace pass {
 class LLVMCodegenPass : public ir::Pass {
 public:
-  LLVMCodegenPass(const std::string &CPU, const std::string &Features,
-                  const std::string &OutputDir);
+  LLVMCodegenPass(const llvm::StringRef CPU, const llvm::StringRef Features,
+                  const llvm::StringRef OutputDir);
 
   std::string getName() override;
 
@@ -51,9 +52,9 @@ private:
   llvm::TargetMachine *m_target_;
 };
 
-ir::Pass::Ptr createLLVMCodegenPass(const std::string &CPU,
-                                    const std::string &Features,
-                                    const std::string &OutputDir);
+ir::Pass::Ptr createLLVMCodegenPass(const llvm::StringRef CPU,
+                                    const llvm::StringRef Features,
+                                    const llvm::StringRef OutputDir);
 } // namespace pass
 } // namespace tyr
 

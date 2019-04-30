@@ -164,7 +164,7 @@ TEST(CodeGen, code_correct) {
     EXPECT_EQ(got_item, test_data[i]);
   }
 
-  uint32_t rand_to_set = rand();
+  uint32_t rand_to_set = static_cast<uint32_t>(rand());
   EXPECT_TRUE(item_setter(test_struct, 3, rand_to_set));
   EXPECT_TRUE(item_getter(test_struct, 3, &got_item));
   EXPECT_EQ(got_item, rand_to_set);

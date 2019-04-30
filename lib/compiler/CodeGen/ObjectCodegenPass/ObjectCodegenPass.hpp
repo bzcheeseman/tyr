@@ -24,6 +24,7 @@
 #define TYR_OBJECTCODEGENPASS_HPP
 
 #include <string>
+#include <llvm/ADT/StringRef.h>
 
 #include "Pass.hpp"
 
@@ -36,8 +37,8 @@ class Module;
 namespace pass {
 class ObjectCodegenPass : public ir::Pass {
 public:
-  ObjectCodegenPass(const std::string &CPU, const std::string &Features,
-                    const std::string &OutputDir);
+  ObjectCodegenPass(const llvm::StringRef CPU, const llvm::StringRef Features,
+                    const llvm::StringRef OutputDir);
 
   std::string getName() override;
 
@@ -50,9 +51,9 @@ private:
   llvm::TargetMachine *m_target_;
 };
 
-ir::Pass::Ptr createObjectCodegenPass(const std::string &CPU,
-                                      const std::string &Features,
-                                      const std::string &OutputDir);
+ir::Pass::Ptr createObjectCodegenPass(const llvm::StringRef CPU,
+                                      const llvm::StringRef Features,
+                                      const llvm::StringRef OutputDir);
 } // namespace pass
 } // namespace tyr
 

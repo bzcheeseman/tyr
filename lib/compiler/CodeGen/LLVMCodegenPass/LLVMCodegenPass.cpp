@@ -33,9 +33,9 @@
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
 
-tyr::pass::LLVMCodegenPass::LLVMCodegenPass(const std::string &CPU,
-                                            const std::string &Features,
-                                            const std::string &OutputDir)
+tyr::pass::LLVMCodegenPass::LLVMCodegenPass(const llvm::StringRef CPU,
+                                            const llvm::StringRef Features,
+                                            const llvm::StringRef OutputDir)
     : m_cpu_(CPU), m_features_(Features), m_output_dir_(OutputDir),
       m_target_(nullptr) {
   llvm::InitializeAllTargetInfos();
@@ -50,8 +50,8 @@ std::string tyr::pass::LLVMCodegenPass::getName() { return "LLVMCodegenPass"; }
 
 bool tyr::pass::LLVMCodegenPass::runOnModule(tyr::Module &m) {
   llvm::Module *parent = m.getModule();
-  const std::string &ModuleName = parent->getName();
-  const std::string &TargetTriple = parent->getTargetTriple();
+  const llvm::StringRef ModuleName = parent->getName();
+  const llvm::StringRef TargetTriple = parent->getTargetTriple();
 
   std::string Error;
   auto Target = llvm::TargetRegistry::lookupTarget(TargetTriple, Error);
@@ -113,9 +113,9 @@ bool tyr::pass::LLVMCodegenPass::runOnModule(tyr::Module &m) {
 }
 
 tyr::ir::Pass::Ptr
-tyr::pass::createLLVMCodegenPass(const std::string &CPU,
-                                 const std::string &Features,
-                                 const std::string &OutputDir) {
+tyr::pass::createLLVMCodegenPass(const llvm::StringRef CPU,
+                                 const llvm::StringRef Features,
+                                 const llvm::StringRef OutputDir) {
   return llvm::make_unique<tyr::pass::LLVMCodegenPass>(CPU, Features,
                                                        OutputDir);
 }

@@ -62,13 +62,15 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &out, const llvm::Type *Ty) {
 }
 } // namespace
 
-tyr::pass::CCodegenPass::CCodegenPass(const std::string &OutputDir,
-                                      const uint32_t RTOptions)
+tyr::pass::CCodegenPass::CCodegenPass(const llvm::StringRef OutputDir,
+                                      uint32_t RTOptions)
     : m_output_dir_(OutputDir), m_rt_options_(RTOptions) {}
 
 std::string tyr::pass::CCodegenPass::getName() { return "CCodegenPass"; }
 
 bool tyr::pass::CCodegenPass::runOnModule(tyr::Module &m) {
+  using ::operator<<; // unclear why this using-declaration is necessary, but OK
+
   // Set up the file we're writing to
   llvm::SmallVector<char, 100> path{m_output_dir_.begin(), m_output_dir_.end()};
   llvm::sys::path::append(path, m.getModule()->getName() + ".h");
@@ -206,7 +208,7 @@ bool tyr::pass::CCodegenPass::runOnModule(tyr::Module &m) {
   return true;
 }
 
-tyr::ir::Pass::Ptr tyr::pass::createCCodegenPass(const std::string &OutputDir,
+tyr::ir::Pass::Ptr tyr::pass::createCCodegenPass(const llvm::StringRef OutputDir,
                                                  uint32_t RTOptions) {
   return llvm::make_unique<tyr::pass::CCodegenPass>(OutputDir, RTOptions);
 }

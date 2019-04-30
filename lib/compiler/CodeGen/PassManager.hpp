@@ -36,7 +36,7 @@ public:
   bool runOnModule(Module &m);
 
 private:
-  std::vector<ir::Pass::Ptr> m_passes_;
+  llvm::SmallVector<ir::Pass::Ptr, 0> m_passes_;
 };
 } // namespace tyr
 

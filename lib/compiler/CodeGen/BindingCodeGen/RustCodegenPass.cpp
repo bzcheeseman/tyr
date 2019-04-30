@@ -32,7 +32,7 @@
 #define TYR_INSTALL_PATH "/usr/local/"
 #endif // TYR_INSTALL_PATH
 
-tyr::pass::RustCodegenPass::RustCodegenPass(const std::string &OutputDir,
+tyr::pass::RustCodegenPass::RustCodegenPass(const llvm::StringRef OutputDir,
                                             uint32_t RTOptions)
     : m_output_dir_(OutputDir), m_rt_options_(RTOptions) {}
 
@@ -52,7 +52,7 @@ bool tyr::pass::RustCodegenPass::runOnModule(tyr::Module &m) {
   llvm::SmallVector<char, 100> CHeaderPath{m_output_dir_.begin(),
                                            m_output_dir_.end()};
   llvm::sys::path::append(CHeaderPath,
-                          std::string(m.getModule()->getName()) + ".h");
+                          llvm::Twine(m.getModule()->getName()) + ".h");
   llvm::sys::fs::make_absolute(CHeaderPath);
   const std::string CHeaderName{CHeaderPath.begin(), CHeaderPath.end()};
 
@@ -60,7 +60,7 @@ bool tyr::pass::RustCodegenPass::runOnModule(tyr::Module &m) {
   llvm::SmallVector<char, 100> ObjectPath{m_output_dir_.begin(),
                                           m_output_dir_.end()};
   llvm::sys::path::append(ObjectPath,
-                          std::string(m.getModule()->getName()) + ".o");
+                          llvm::Twine(m.getModule()->getName()) + ".o");
   llvm::sys::fs::make_absolute(ObjectPath);
   const std::string ObjectPathName{ObjectPath.begin(), ObjectPath.end()};
 
@@ -68,7 +68,7 @@ bool tyr::pass::RustCodegenPass::runOnModule(tyr::Module &m) {
   llvm::SmallVector<char, 100> BitcodePath{m_output_dir_.begin(),
                                            m_output_dir_.end()};
   llvm::sys::path::append(BitcodePath,
-                          std::string(m.getModule()->getName()) + ".bc");
+                          llvm::Twine(m.getModule()->getName()) + ".bc");
   llvm::sys::fs::make_absolute(BitcodePath);
   const std::string BitcodePathName{BitcodePath.begin(), BitcodePath.end()};
 
@@ -161,7 +161,7 @@ bool tyr::pass::RustCodegenPass::runOnModule(tyr::Module &m) {
 }
 
 tyr::ir::Pass::Ptr
-tyr::pass::createRustCodegenPass(const std::string &OutputDir,
+tyr::pass::createRustCodegenPass(const llvm::StringRef OutputDir,
                                  uint32_t RTOptions) {
   return llvm::make_unique<tyr::pass::RustCodegenPass>(OutputDir, RTOptions);
 }

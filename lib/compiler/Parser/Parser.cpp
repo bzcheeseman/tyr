@@ -35,7 +35,7 @@ bool tyr::Parser::parseFile(std::istream &input) {
   std::string l;
   while (std::getline(input, l)) {
     std::istringstream line{l};
-    std::vector<std::string> tokens{std::istream_iterator<std::string>{line},
+    llvm::SmallVector<std::string, 0> tokens{std::istream_iterator<std::string>{line},
                                     std::istream_iterator<std::string>{}};
 
     if (tokens.empty()) { // nothing on that line
@@ -69,7 +69,7 @@ bool tyr::Parser::parseFile(std::istream &input) {
 }
 
 namespace {
-bool addField(tyr::Module &m, const std::string &StructName, bool IsMutable,
+bool addField(tyr::Module &m, const llvm::StringRef StructName, bool IsMutable,
               bool IsRepeated, std::string FieldType, std::string FieldName) {
   llvm::Type *FT = m.parseType(std::move(FieldType), IsRepeated);
   if (FT == nullptr) {
@@ -89,13 +89,13 @@ bool addField(tyr::Module &m, const std::string &StructName, bool IsMutable,
 }
 } // namespace
 
-bool tyr::Parser::parseLine(const std::vector<std::string> &tokens) {
+bool tyr::Parser::parseLine(const llvm::ArrayRef<std::string> tokens) {
   if (tokens[0] == "struct") {
     if (m_current_struct_ != nullptr) {
       llvm::errs() << "tyr doesn't support nested struct declarations\n";
       return false;
     }
-    const std::string &StructName = tokens[1];
+    const llvm::StringRef StructName = tokens[1];
     m_current_struct_ = m_module_.getOrCreateStruct(StructName);
     m_current_struct_->setIsPacked(tokens.size() == 3 && tokens[2] == "packed");
     return true;

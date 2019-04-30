@@ -42,5 +42,5 @@ TEST(Parser, basic_C) {
   std::istringstream is(struct_def);
   Parser p{m};
   EXPECT_TRUE(p.parseFile(is));
-};
+}
 } // namespace

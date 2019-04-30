@@ -38,15 +38,15 @@ class ExecutionEngine;
 namespace tyr {
 class Module {
 public:
-  explicit Module(const std::string &ModuleName, llvm::LLVMContext &Ctx);
+  explicit Module(const llvm::StringRef ModuleName, llvm::LLVMContext &Ctx);
   virtual ~Module();
 
-  void setTargetTriple(const std::string &TargetTriple);
-  void setSourceFileName(const std::string &SourceFilename);
+  void setTargetTriple(const llvm::StringRef TargetTriple);
+  void setSourceFileName(const llvm::StringRef SourceFilename);
 
-  ir::Struct *getOrCreateStruct(const std::string &name);
+  ir::Struct *getOrCreateStruct(const llvm::StringRef name);
   const std::unordered_map<std::string, ir::Struct *> &getStructs() const;
-  bool linkRuntimeModules(const std::string &Directory, uint32_t options);
+  bool linkRuntimeModules(const llvm::StringRef Directory, uint32_t options);
 
   bool visit(ir::Pass &p);
 
@@ -62,6 +62,8 @@ private:
 
   std::unordered_map<std::string, ir::Struct *> m_module_structs_;
 };
+
+llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const Module &m);
 
 llvm::ExecutionEngine *getExecutionEngine(llvm::Module *Parent);
 

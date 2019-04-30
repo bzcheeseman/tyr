@@ -23,9 +23,9 @@
 #ifndef TYR_RUSTCODEGENPASS_HPP
 #define TYR_RUSTCODEGENPASS_HPP
 
-#include <string>
-
 #include "Pass.hpp"
+
+#include <llvm/ADT/StringRef.h>
 
 namespace tyr {
 class Module;
@@ -33,7 +33,7 @@ class Module;
 namespace pass {
 class RustCodegenPass : public ir::Pass {
 public:
-  explicit RustCodegenPass(const std::string &OutputDir, uint32_t RTOptions);
+  explicit RustCodegenPass(const llvm::StringRef OutputDir, uint32_t RTOptions);
 
   std::string getName() override;
   bool runOnModule(Module &m) override;
@@ -43,7 +43,7 @@ private:
   const uint32_t m_rt_options_;
 };
 
-ir::Pass::Ptr createRustCodegenPass(const std::string &OutputDir,
+ir::Pass::Ptr createRustCodegenPass(const llvm::StringRef OutputDir,
                                     uint32_t RTOptions);
 } // namespace pass
 } // namespace tyr

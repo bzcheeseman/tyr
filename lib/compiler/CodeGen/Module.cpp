@@ -35,7 +35,7 @@
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 
-tyr::Module::Module(const std::string &ModuleName, llvm::LLVMContext &Ctx)
+tyr::Module::Module(const llvm::StringRef ModuleName, llvm::LLVMContext &Ctx)
     : m_ctx_(Ctx) {
   m_parent_ = llvm::make_unique<llvm::Module>(ModuleName, m_ctx_);
 
@@ -54,15 +54,15 @@ tyr::Module::~Module() {
   }
 }
 
-void tyr::Module::setTargetTriple(const std::string &TargetTriple) {
+void tyr::Module::setTargetTriple(const llvm::StringRef TargetTriple) {
   m_parent_->setTargetTriple(TargetTriple);
 }
 
-void tyr::Module::setSourceFileName(const std::string &SourceFilename) {
+void tyr::Module::setSourceFileName(const llvm::StringRef SourceFilename) {
   m_parent_->setSourceFileName(SourceFilename);
 }
 
-tyr::ir::Struct *tyr::Module::getOrCreateStruct(const std::string &name) {
+tyr::ir::Struct *tyr::Module::getOrCreateStruct(const llvm::StringRef name) {
   auto got_struct = m_module_structs_.find(name);
   if (got_struct != m_module_structs_.end()) {
     return got_struct->second;
@@ -131,7 +131,7 @@ llvm::Type *tyr::Module::parseType(llvm::StringRef FieldType, bool IsRepeated) {
       return nullptr;
     }
 
-    OutTy = llvm::Type::getIntNTy(m_ctx_, intBits);
+    OutTy = llvm::Type::getIntNTy(m_ctx_, (uint32_t)intBits);
   } else if (FieldType == "float") {
     OutTy = llvm::Type::getFloatTy(m_ctx_);
   } else if (FieldType == "double") {
@@ -155,8 +155,8 @@ const std::string TYR_FILE_HELPER_FILE = "tyr-rt-file.bc";
 const std::string TYR_BASE64_FILE = "tyr-rt-base64.bc";
 
 std::unique_ptr<llvm::Module>
-getModuleFromFile(llvm::LLVMContext &ctx, const std::string &filename,
-                  const std::string &TargetTriple) {
+getModuleFromFile(llvm::LLVMContext &ctx, const llvm::StringRef filename,
+                  const llvm::StringRef TargetTriple) {
   auto FileBuf = llvm::MemoryBuffer::getFile(filename);
   if (std::error_code ec = FileBuf.getError()) {
     llvm::errs() << "Error getting file " << filename << ": " << ec.message()
@@ -178,7 +178,7 @@ getModuleFromFile(llvm::LLVMContext &ctx, const std::string &filename,
 }
 } // namespace
 
-bool tyr::Module::linkRuntimeModules(const std::string &Directory,
+bool tyr::Module::linkRuntimeModules(const llvm::StringRef Directory,
                                      uint32_t options) {
   llvm::Linker Linker{*m_parent_};
 
@@ -242,6 +242,6 @@ llvm::ExecutionEngine *tyr::getExecutionEngine(llvm::Module *Parent) {
   return engine;
 }
 
-bool tyr::rt::isFileEnabled(uint32_t options) { return options & (0b1u << 0); }
+bool tyr::rt::isFileEnabled(uint32_t options) { return (options & (0b1u << 0)) == 1; }
 
-bool tyr::rt::isB64Enabled(uint32_t options) { return options & (0b1u << 1); }
+bool tyr::rt::isB64Enabled(uint32_t options) { return (options & (0b1u << 1)) >> 1 == 1; }

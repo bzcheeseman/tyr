@@ -956,7 +956,7 @@ tyr::pass::LLVMIRGenPass::getStructAllocSize(const tyr::ir::Struct *s) {
 bool tyr::pass::LLVMIRGenPass::getConstructor(const tyr::ir::Struct *s) {
   llvm::ArrayRef<ir::FieldPtr> structFields = s->getFields();
 
-  std::vector<llvm::Type *> NonMutFields;
+  llvm::SmallVector<llvm::Type *, 0> NonMutFields;
   for (auto &entry : structFields) {
     if (!entry->isMutable) {
       NonMutFields.push_back(entry->type);

@@ -24,6 +24,7 @@
 #define TYR_PARSER_HPP
 
 #include <istream>
+#include <llvm/ADT/ArrayRef.h>
 
 namespace tyr {
 
@@ -49,7 +50,7 @@ public:
   bool parseFile(std::istream &input);
 
 private:
-  bool parseLine(const std::vector<std::string> &tokens);
+  bool parseLine(const llvm::ArrayRef<std::string> tokens);
 
 private:
   ir::Struct *m_current_struct_;

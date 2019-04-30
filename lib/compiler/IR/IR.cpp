@@ -105,7 +105,7 @@ void tyr::ir::Struct::finalizeFields(llvm::Module *Parent) {
                      getFieldSize(rhs.get(), Parent);
             });
 
-  std::vector<llvm::Type *> element_types;
+  llvm::SmallVector<llvm::Type *, 0> element_types;
   for (auto &entry : m_fields_) {
     element_types.push_back(entry->type);
   }

@@ -59,7 +59,7 @@ private:
   bool m_packed_ = false;
   llvm::StructType *m_type_ = nullptr;
 
-  std::vector<FieldPtr> m_fields_;
+  llvm::SmallVector<FieldPtr, 0> m_fields_;
 };
 
 struct Field {
