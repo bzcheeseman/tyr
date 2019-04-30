@@ -21,9 +21,7 @@
  */
 
 #include "LLVMIRGenPass.hpp"
-
 #include "IR.hpp"
-#include "Module.hpp"
 
 #include <llvm/Transforms/Utils/Cloning.h>
 
@@ -142,8 +140,9 @@ void swapArrayBytes(llvm::Value *ArrayPtr, llvm::Value *Count,
 }
 } // namespace
 
-tyr::pass::LLVMIRGenPass::LLVMIRGenPass(llvm::Module *Parent)
-    : m_parent_(Parent) {}
+tyr::pass::LLVMIRGenPass::LLVMIRGenPass(llvm::Module *Parent,
+                                        llvm::StringMap<std::string> Builtins)
+    : m_parent_(Parent), m_builtin_names_(std::move(Builtins)) {}
 
 std::string tyr::pass::LLVMIRGenPass::getName() { return "LLVMIRGenPass"; }
 
@@ -241,8 +240,9 @@ bool tyr::pass::LLVMIRGenPass::initField(const tyr::ir::Field *f,
       // Get the field alloc size
       llvm::Value *FieldAllocSize = getFieldAllocSize(f, Struct, builder);
       // Do the allocation
-      llvm::Value *AllocdMem =
-          builder.CreateCall(m_parent_->getFunction("malloc"), FieldAllocSize);
+      llvm::Value *AllocdMem = builder.CreateCall(
+          m_parent_->getFunction(m_builtin_names_.lookup("malloc")),
+          FieldAllocSize);
       llvm::Function *Constructor = builder.GetInsertBlock()->getParent();
       // Check that it succeeded
       llvm::BasicBlock *AllocSucceeded = insertNullCheck(
@@ -275,7 +275,7 @@ bool tyr::pass::LLVMIRGenPass::destroyField(const tyr::ir::Field *f,
       m_parent_->getDataLayout().getProgramAddressSpace();
 
   if (f->type->isPointerTy()) {
-    builder.CreateCall(m_parent_->getFunction("free"),
+    builder.CreateCall(m_parent_->getFunction(m_builtin_names_.lookup("free")),
                        builder.CreateBitCast(builder.CreateLoad(FieldGEP),
                                              builder.getInt8PtrTy(AddrSpace)));
   }
@@ -346,8 +346,9 @@ bool tyr::pass::LLVMIRGenPass::getGetter(const ir::Field *f) const {
   } else if (f->isRepeated && !f->isMutable) {
     llvm::Value *FieldAllocSize = getFieldAllocSize(f, Self, builder);
 
-    llvm::Value *AllocdMem =
-        builder.CreateCall(m_parent_->getFunction("malloc"), FieldAllocSize);
+    llvm::Value *AllocdMem = builder.CreateCall(
+        m_parent_->getFunction(m_builtin_names_.lookup("malloc")),
+        FieldAllocSize);
     llvm::BasicBlock *AllocSucceeded =
         insertNullCheck({AllocdMem}, builder.getInt1(false), builder, Getter);
 
@@ -537,8 +538,9 @@ bool tyr::pass::LLVMIRGenPass::getSetter(const tyr::ir::Field *f) const {
     // Get the field alloc size
     llvm::Value *FieldAllocSize = getFieldAllocSize(f, Self, builder);
     // Do the allocation
-    llvm::Value *AllocdMem =
-        builder.CreateCall(m_parent_->getFunction("malloc"), FieldAllocSize);
+    llvm::Value *AllocdMem = builder.CreateCall(
+        m_parent_->getFunction(m_builtin_names_.lookup("malloc")),
+        FieldAllocSize);
     AllocdMem = builder.CreateBitCast(AllocdMem, f->type);
     // Check that it succeeded, if it's not NULL go to SizeIsRight
     llvm::BasicBlock *SizeIsRight =
@@ -562,7 +564,7 @@ bool tyr::pass::LLVMIRGenPass::getSetter(const tyr::ir::Field *f) const {
     FieldAllocSize = getFieldAllocSize(f, Self, builder);
     // And realloc
     llvm::Value *ReallocFieldMem = builder.CreateCall(
-        m_parent_->getFunction("realloc"),
+        m_parent_->getFunction(m_builtin_names_.lookup("realloc")),
         {builder.CreateBitCast(LoadedField, builder.getInt8PtrTy(AddrSpace)),
          FieldAllocSize});
     ReallocFieldMem = builder.CreateBitCast(ReallocFieldMem, f->type);
@@ -618,7 +620,7 @@ bool tyr::pass::LLVMIRGenPass::getSetter(const tyr::ir::Field *f) const {
     llvm::Value *LoadedRepeatedField = builder.CreateLoad(RepeatedFieldGEP);
     // Realloc to set the size
     llvm::Value *ReallocFieldMem = builder.CreateCall(
-        m_parent_->getFunction("realloc"),
+        m_parent_->getFunction(m_builtin_names_.lookup("realloc")),
         {builder.CreateBitCast(LoadedRepeatedField,
                                builder.getInt8PtrTy(AddrSpace)),
          getFieldAllocSize(f->countsFor, Self, builder)});
@@ -792,7 +794,8 @@ bool tyr::pass::LLVMIRGenPass::getSerializer(const tyr::ir::Field *f) const {
     // Copy the memory over - alignment is 1 because it's already uint8
     builder.CreateMemCpy(CurrentPtr, 0, SerializedField, 0, OutSize);
     // Free the allocated buffer
-    builder.CreateCall(m_parent_->getFunction("free"), {SerializedField});
+    builder.CreateCall(m_parent_->getFunction(m_builtin_names_.lookup("free")),
+                       {SerializedField});
   } else if (f->type->isPointerTy()) {
     // Get the count and store it first
     llvm::Value *Count = builder.CreateLoad(
@@ -909,8 +912,9 @@ bool tyr::pass::LLVMIRGenPass::getDeserializer(const tyr::ir::Field *f) const {
     CastedCurrentPtr =
         builder.CreateBitCast(CurrentPtr, f->type->getPointerTo(AddrSpace));
     llvm::Value *PtrFieldAllocSize = getFieldAllocSize(f, Self, builder);
-    llvm::Value *FieldMem =
-        builder.CreateCall(m_parent_->getFunction("malloc"), PtrFieldAllocSize);
+    llvm::Value *FieldMem = builder.CreateCall(
+        m_parent_->getFunction(m_builtin_names_.lookup("malloc")),
+        PtrFieldAllocSize);
     llvm::BasicBlock *MallocSucceeded =
         insertNullCheck({FieldMem}, builder.getInt64(0), builder, Deserializer);
 
@@ -985,9 +989,9 @@ bool tyr::pass::LLVMIRGenPass::getConstructor(const tyr::ir::Struct *s) {
   llvm::IRBuilder<> builder(EntryBlock);
 
   // Allocate space for the output
-  llvm::Value *StructOutRaw =
-      builder.CreateCall(m_parent_->getFunction("malloc"),
-                         builder.getInt64(getStructAllocSize(s)));
+  llvm::Value *StructOutRaw = builder.CreateCall(
+      m_parent_->getFunction(m_builtin_names_.lookup("malloc")),
+      builder.getInt64(getStructAllocSize(s)));
   // Make sure malloc succeeds
   llvm::BasicBlock *MallocSuccess = insertNullCheck(
       {StructOutRaw},
@@ -1048,7 +1052,7 @@ bool tyr::pass::LLVMIRGenPass::getDestructor(const tyr::ir::Struct *s) {
   }
 
   builder.CreateCall(
-      m_parent_->getFunction("free"),
+      m_parent_->getFunction(m_builtin_names_.lookup("free")),
       builder.CreateBitCast(Struct, builder.getInt8PtrTy(AddrSpace)));
   builder.CreateRetVoid();
 
@@ -1093,15 +1097,15 @@ bool tyr::pass::LLVMIRGenPass::getSerializer(const tyr::ir::Struct *s) {
   builder.SetInsertPoint(IsNotNull);
 
   // Start out with enough space for an int64
-  llvm::Value *AllocSize = builder.getInt64(8);
+  llvm::Value *AllocSize = builder.getInt64(sizeof(uint64_t));
   // add up the output memory
   for (auto &entry : structFields) {
     AllocSize = builder.CreateAdd(
         AllocSize, getFieldAllocSize(entry.get(), Self, builder));
   }
 
-  llvm::Value *AllocdMem =
-      builder.CreateCall(m_parent_->getFunction("malloc"), AllocSize);
+  llvm::Value *AllocdMem = builder.CreateCall(
+      m_parent_->getFunction(m_builtin_names_.lookup("malloc")), AllocSize);
 
   llvm::BasicBlock *MallocSucceeded = insertNullCheck(
       {AllocdMem},
@@ -1116,7 +1120,7 @@ bool tyr::pass::LLVMIRGenPass::getSerializer(const tyr::ir::Struct *s) {
       builder.CreateBitCast(AllocdMem,
                             builder.getInt64Ty()->getPointerTo(AddrSpace)));
 
-  llvm::Value *CurrentIDX = builder.getInt64(8);
+  llvm::Value *CurrentIDX = builder.getInt64(sizeof(uint64_t));
   for (auto &entry : structFields) {
     if (entry->isCount) { // count fields are handled already
       continue;
@@ -1182,8 +1186,9 @@ bool tyr::pass::LLVMIRGenPass::getDeserializer(const tyr::ir::Struct *s) {
   llvm::Value *StructAllocSize =
       builder.getInt64(DL.getTypeAllocSize(GenStructType));
 
-  llvm::Value *StructOutRaw =
-      builder.CreateCall(m_parent_->getFunction("malloc"), StructAllocSize);
+  llvm::Value *StructOutRaw = builder.CreateCall(
+      m_parent_->getFunction(m_builtin_names_.lookup("malloc")),
+      StructAllocSize);
 
   // Make sure malloc succeeded
   llvm::BasicBlock *MallocSucceeded = insertNullCheck(
@@ -1196,7 +1201,7 @@ bool tyr::pass::LLVMIRGenPass::getDeserializer(const tyr::ir::Struct *s) {
 
   // Now set all the fields
   // We start at 8 because we already loaded the serialized size
-  llvm::Value *CurrentIDX = builder.getInt64(8);
+  llvm::Value *CurrentIDX = builder.getInt64(sizeof(uint64_t));
   for (auto &entry : structFields) {
     if (entry->isCount) { // count fields are handled already
       continue;
@@ -1211,7 +1216,7 @@ bool tyr::pass::LLVMIRGenPass::getDeserializer(const tyr::ir::Struct *s) {
 
   // Check that the size of everything is OK
   // Start out with enough space for an int64
-  llvm::Value *AllocSize = builder.getInt64(8);
+  llvm::Value *AllocSize = builder.getInt64(sizeof(uint64_t));
   // add up the output memory
   for (auto &entry : structFields) {
     AllocSize = builder.CreateAdd(
@@ -1239,5 +1244,6 @@ bool tyr::pass::LLVMIRGenPass::getDeserializer(const tyr::ir::Struct *s) {
 }
 
 tyr::ir::Pass::Ptr tyr::pass::createLLVMIRGenPass(tyr::Module &Parent) {
-  return llvm::make_unique<tyr::pass::LLVMIRGenPass>(Parent.getModule());
+  return llvm::make_unique<tyr::pass::LLVMIRGenPass>(
+      Parent.getModule(), std::move(Parent.getBuiltins()));
 }

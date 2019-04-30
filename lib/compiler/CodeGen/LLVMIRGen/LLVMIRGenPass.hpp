@@ -23,6 +23,7 @@
 #ifndef TYR_CODEGENVISITOR_HPP
 #define TYR_CODEGENVISITOR_HPP
 
+#include "Module.hpp"
 #include "Pass.hpp"
 
 #include <llvm/IR/IRBuilder.h>
@@ -44,7 +45,7 @@ class Field;
 namespace pass {
 class LLVMIRGenPass : public ir::Pass {
 public:
-  explicit LLVMIRGenPass(llvm::Module *Parent);
+  LLVMIRGenPass(llvm::Module *Parent, llvm::StringMap<std::string> Builtins);
 
   std::string getName() override;
   bool runOnStruct(const ir::Struct &s) override;
@@ -78,6 +79,7 @@ private:
 
 private:
   llvm::Module *m_parent_ = nullptr;
+  const llvm::StringMap<std::string> m_builtin_names_;
 };
 
 ir::Pass::Ptr createLLVMIRGenPass(tyr::Module &Parent);

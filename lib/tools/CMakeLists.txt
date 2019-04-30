@@ -1,1 +1,3 @@
 add_subdirectory(tyrc)
+
+set(ALL_CXX_SOURCE_FILES ${ALL_CXX_SOURCE_FILES} PARENT_SCOPE)

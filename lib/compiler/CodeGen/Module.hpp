@@ -23,8 +23,8 @@
 #ifndef TYR_MODULE_HPP
 #define TYR_MODULE_HPP
 
-#include <string>
-#include <unordered_map>
+#include <llvm/ADT/DenseMap.h>
+#include <llvm/ADT/StringMap.h>
 
 #include "IR.hpp"
 #include "PassManager.hpp"
@@ -43,14 +43,18 @@ public:
 
   void setTargetTriple(const llvm::StringRef TargetTriple);
   void setSourceFileName(const llvm::StringRef SourceFilename);
+  void setBuiltinName(const llvm::StringRef Which, const llvm::StringRef New);
+  void finalizeBuiltins();
 
   ir::Struct *getOrCreateStruct(const llvm::StringRef name);
-  const std::unordered_map<std::string, ir::Struct *> &getStructs() const;
+  const llvm::StringMap<ir::Struct *> &getStructs() const;
   bool linkRuntimeModules(const llvm::StringRef Directory, uint32_t options);
 
   bool visit(ir::Pass &p);
 
   llvm::Module *getModule();
+
+  llvm::StringMap<std::string> getBuiltins() const;
 
   llvm::Type *parseType(llvm::StringRef FieldType, bool IsRepeated);
 
@@ -60,7 +64,9 @@ private:
   llvm::LLVMContext &m_ctx_;
   std::unique_ptr<llvm::Module> m_parent_;
 
-  std::unordered_map<std::string, ir::Struct *> m_module_structs_;
+  llvm::StringMap<ir::Struct *> m_module_structs_;
+  llvm::StringMap<std::string> m_builtin_names_;
+  bool m_builtins_finalized_ = false;
 };
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const Module &m);

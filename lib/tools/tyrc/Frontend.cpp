@@ -20,19 +20,18 @@
     limitations under the License.
  */
 
-
 #include <fstream>
 
 #include <llvm/ADT/Triple.h>
 #include <llvm/Support/Path.h>
 
-#include <Module.hpp>
-#include <Parser.hpp>
-#include <LLVMIRGen/LLVMIRGenPass.hpp>
-#include <LLVMCodegenPass/LLVMCodegenPass.hpp>
-#include <ObjectCodegenPass/ObjectCodegenPass.hpp>
 #include <BindingCodeGen/CCodegenPass.hpp>
 #include <BindingCodeGen/RustCodegenPass.hpp>
+#include <LLVMCodegenPass/LLVMCodegenPass.hpp>
+#include <LLVMIRGen/LLVMIRGenPass.hpp>
+#include <Module.hpp>
+#include <ObjectCodegenPass/ObjectCodegenPass.hpp>
+#include <Parser.hpp>
 
 namespace {
 
@@ -66,24 +65,40 @@ cl::opt<std::string> OutputDir("out-dir",
 
 cl::opt<std::string> ModuleName("module-name",
                                 cl::desc("Override the module name manually"),
-                                cl::init(""), cl::cat(tyrCompilerOptions), cl::Hidden);
+                                cl::init(""), cl::cat(tyrCompilerOptions),
+                                cl::Hidden);
 
-cl::bits<SupportedBindingLanguages>
-    BindLang("bind-lang",
-             cl::desc("Available binding languages:"),
-             cl::values(
-                    clEnumValN(kSBLC, "c", "Generate C bindings (header file)"),
-                    clEnumValN(kSBLRust, "rust", "Generate rust bindings (.h file and build_*_bindings.rs file from that)")
-             ),
-             cl::OneOrMore, cl::cat(tyrCompilerOptions));
+cl::bits<SupportedBindingLanguages> BindLang(
+    "bind-lang", cl::desc("Available binding languages:"),
+    cl::values(clEnumValN(kSBLC, "c", "Generate C bindings (header file)"),
+               clEnumValN(kSBLRust, "rust",
+                          "Generate rust bindings (.h file and "
+                          "build_*_bindings.rs file from that)")),
+    cl::OneOrMore, cl::cat(tyrCompilerOptions));
 
-cl::bits<RuntimeOptions> RuntimeOpts(
-        cl::desc("Options for configuring the runtime linking:"),
-        cl::values(
-                clEnumValN(kEnableFileHelper, "file-utils", "Enable the file utilities"),
-                clEnumValN(kEnableBase64, "base64", "Enable the base64 utilities")
-        ),
-        cl::ZeroOrMore, cl::cat(tyrCompilerOptions));
+cl::bits<RuntimeOptions>
+    RuntimeOpts(cl::desc("Options for configuring the runtime linking:"),
+                cl::values(clEnumValN(kEnableFileHelper, "file-utils",
+                                      "Enable the file utilities"),
+                           clEnumValN(kEnableBase64, "base64",
+                                      "Enable the base64 utilities")),
+                cl::ZeroOrMore, cl::cat(tyrCompilerOptions));
+
+cl::OptionCategory
+    tyrBuiltinOptions("tyr Compiler Builtin Options",
+                      "These options specify what builtin/cstdlib functions "
+                      "the compiler should use.");
+cl::opt<std::string>
+    MallocName("malloc-name",
+               cl::desc("The name to use for the 'malloc' builtin"),
+               cl::init("malloc"), cl::cat(tyrBuiltinOptions));
+cl::opt<std::string>
+    ReallocName("realloc-name",
+                cl::desc("The name to use for the 'realloc' builtin"),
+                cl::init("realloc"), cl::cat(tyrBuiltinOptions));
+cl::opt<std::string>
+    FreeName("free-name", cl::desc("The name to use for the 'free' builtin"),
+             cl::init("free"), cl::cat(tyrBuiltinOptions));
 
 cl::opt<std::string> Target("target-triple", cl::desc("The target triple"),
                             cl::value_desc("triple"),
@@ -98,8 +113,10 @@ cl::opt<std::string> Features(
     cl::desc("Use +feature to enable a feature, or -feature to disable"),
     cl::init(""));
 
-cl::opt<bool> EmitLLVM("emit-llvm", cl::desc("Emit LLVM bytecode. Also enables LTO and ThinLTO."),
-                       cl::init(false));
+cl::opt<bool>
+    EmitLLVM("emit-llvm",
+             cl::desc("Emit LLVM bytecode. Also enables LTO and ThinLTO."),
+             cl::init(false));
 
 const int COULD_NOT_OPEN_FILE = -1;
 const int PARSING_FAILED = -2;
@@ -133,6 +150,12 @@ int main(int argc, char *argv[]) {
   llvm::LLVMContext ctx;
   tyr::Module module{MN, ctx};
 
+  // Reset the builtin names
+  module.setBuiltinName("malloc", MallocName.getValue());
+  module.setBuiltinName("realloc", ReallocName.getValue());
+  module.setBuiltinName("free", FreeName.getValue());
+  module.finalizeBuiltins();
+
   // read the file
   std::ifstream in_file{FN};
   if (!in_file.is_open()) {
@@ -159,19 +182,23 @@ int main(int argc, char *argv[]) {
 
   // Initialize the codegen
   if (EmitLLVM.getValue()) {
-    PM.registerPass(tyr::pass::createLLVMCodegenPass(CPU.getValue(), Features.getValue(), OutputDir.getValue()));
+    PM.registerPass(tyr::pass::createLLVMCodegenPass(
+        CPU.getValue(), Features.getValue(), OutputDir.getValue()));
   } else {
-    PM.registerPass(tyr::pass::createObjectCodegenPass(CPU.getValue(), Features.getValue(), OutputDir.getValue()));
+    PM.registerPass(tyr::pass::createObjectCodegenPass(
+        CPU.getValue(), Features.getValue(), OutputDir.getValue()));
   }
 
   if (BindLang.isSet(kSBLC)) {
     // Initialize the C binding
-    PM.registerPass(tyr::pass::createCCodegenPass(OutputDir, RuntimeOpts.getBits()));
+    PM.registerPass(
+        tyr::pass::createCCodegenPass(OutputDir, RuntimeOpts.getBits()));
   }
 
   if (BindLang.isSet(kSBLRust)) {
     // Initialize the Rust binding
-    PM.registerPass(tyr::pass::createRustCodegenPass(OutputDir, RuntimeOpts.getBits()));
+    PM.registerPass(
+        tyr::pass::createRustCodegenPass(OutputDir, RuntimeOpts.getBits()));
   }
 
   // Link the runtime

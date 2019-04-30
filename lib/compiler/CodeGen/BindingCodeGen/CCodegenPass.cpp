@@ -117,44 +117,44 @@ bool tyr::pass::CCodegenPass::runOnModule(tyr::Module &m) {
 
   // Iterate over the structs and create the typedefs
   for (const auto &s : m.getStructs()) {
-    out << "typedef struct " << s.first << " " << s.first << "_t;\n";
+    out << "typedef struct " << s.first() << " " << s.first() << "_t;\n";
   }
 
   out << "\n\n";
 
   for (const auto &s : m.getStructs()) {
-    const std::string PtrName = s.first + "_t *";
+    const std::string PtrName = std::string(s.first()) + "_t *";
 
     llvm::SmallVector<ir::Field *, 8> ConstructorFields;
     for (auto &f : s.second->getFields()) {
       if (f->isCount) {
         continue;
       }
-      out << "bool get_" << s.first << "_" << f->name << "(" << PtrName
+      out << "bool get_" << s.first() << "_" << f->name << "(" << PtrName
           << "struct_ptr, " << f->type->getPointerTo(0) << f->name << ");\n";
 
       if (f->isMutable) {
         if (f->isRepeated) {
-          out << "bool set_" << s.first << "_" << f->name << "(" << PtrName
+          out << "bool set_" << s.first() << "_" << f->name << "(" << PtrName
               << "struct_ptr, " << f->type << f->name << ", uint64_t "
               << f->name << "_count);\n";
         } else {
-          out << "bool set_" << s.first << "_" << f->name << "(" << PtrName
+          out << "bool set_" << s.first() << "_" << f->name << "(" << PtrName
               << "struct_ptr, " << f->type << f->name << ");\n";
         }
       }
 
       if (f->isRepeated) {
-        out << "bool get_" << s.first << "_" << f->name << "_item(" << PtrName
+        out << "bool get_" << s.first() << "_" << f->name << "_item(" << PtrName
             << "struct_ptr, uint64_t idx, " << f->type << f->name
             << "_item);\n";
         if (f->isMutable) {
-          out << "bool set_" << s.first << "_" << f->name << "_item(" << PtrName
-              << "struct_ptr, uint64_t idx, "
+          out << "bool set_" << s.first() << "_" << f->name << "_item("
+              << PtrName << "struct_ptr, uint64_t idx, "
               << f->type->getPointerElementType() << f->name << "_item);\n";
         }
-        out << "bool get_" << s.first << "_" << f->name << "_count(" << PtrName
-            << "struct_ptr, uint64_t *count);\n";
+        out << "bool get_" << s.first() << "_" << f->name << "_count("
+            << PtrName << "struct_ptr, uint64_t *count);\n";
       }
 
       if (!f->isMutable) {
@@ -163,7 +163,7 @@ bool tyr::pass::CCodegenPass::runOnModule(tyr::Module &m) {
     }
 
     // Constructor
-    out << PtrName << " create_" << s.first << "(";
+    out << PtrName << " create_" << s.first() << "(";
     if (!ConstructorFields.empty()) {
       for (auto cf = ConstructorFields.begin(),
                 end = ConstructorFields.end() - 1;
@@ -183,15 +183,15 @@ bool tyr::pass::CCodegenPass::runOnModule(tyr::Module &m) {
     out << ");\n";
 
     // Destructor
-    out << "void destroy_" << s.first << "(" << PtrName << "struct_ptr);\n";
+    out << "void destroy_" << s.first() << "(" << PtrName << "struct_ptr);\n";
 
-    out << "typedef void *" << s.first << "_ptr;\n";
+    out << "typedef void *" << s.first() << "_ptr;\n";
     // Serializer
-    out << "uint8_t *serialize_" << s.first << "(" << s.first
+    out << "uint8_t *serialize_" << s.first() << "(" << s.first()
         << "_ptr struct_ptr);\n";
 
     // Deserializer
-    out << s.first << "_ptr deserialize_" << s.first
+    out << s.first() << "_ptr deserialize_" << s.first()
         << "(uint8_t *serialized_struct);\n\n";
   }
 
@@ -208,7 +208,8 @@ bool tyr::pass::CCodegenPass::runOnModule(tyr::Module &m) {
   return true;
 }
 
-tyr::ir::Pass::Ptr tyr::pass::createCCodegenPass(const llvm::StringRef OutputDir,
-                                                 uint32_t RTOptions) {
+tyr::ir::Pass::Ptr
+tyr::pass::createCCodegenPass(const llvm::StringRef OutputDir,
+                              uint32_t RTOptions) {
   return llvm::make_unique<tyr::pass::CCodegenPass>(OutputDir, RTOptions);
 }

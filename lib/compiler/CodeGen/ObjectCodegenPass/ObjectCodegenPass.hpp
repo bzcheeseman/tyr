@@ -23,8 +23,8 @@
 #ifndef TYR_OBJECTCODEGENPASS_HPP
 #define TYR_OBJECTCODEGENPASS_HPP
 
-#include <string>
 #include <llvm/ADT/StringRef.h>
+#include <string>
 
 #include "Pass.hpp"
 

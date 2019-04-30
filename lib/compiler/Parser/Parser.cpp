@@ -34,7 +34,7 @@ bool tyr::Parser::parseFile(std::istream &input) {
   bool insideComment = false;
   std::string l;
   while (std::getline(input, l)) {
-    llvm::StringRef lineRef {l};
+    llvm::StringRef lineRef{l};
     lineRef = lineRef.ltrim(" ");
 
     if (lineRef.empty()) { // nothing on that line
@@ -50,14 +50,18 @@ bool tyr::Parser::parseFile(std::istream &input) {
       continue;
     }
 
-    if (lineRef.startswith("*/") || lineRef.endswith("*/")) { // end block comment
+    if (lineRef.startswith("*/") ||
+        lineRef.endswith("*/")) { // end block comment
       insideComment = false;
       continue;
     }
 
     // Already checked for comments, so these are invalid
-    if (lineRef.contains("//") || lineRef.contains("/*") || lineRef.contains("*/")) {
-      llvm::errs() << "Comments are not allowed inline with code, syntax error on line " << lineno << "\n";
+    if (lineRef.contains("//") || lineRef.contains("/*") ||
+        lineRef.contains("*/")) {
+      llvm::errs()
+          << "Comments are not allowed inline with code, syntax error on line "
+          << lineno << "\n";
       return false;
     }
 
@@ -78,18 +82,17 @@ bool tyr::Parser::parseFile(std::istream &input) {
 
 namespace {
 bool addField(tyr::Module &m, const llvm::StringRef StructName, bool IsMutable,
-              bool IsRepeated, llvm::StringRef FieldType, llvm::StringRef FieldName) {
+              bool IsRepeated, llvm::StringRef FieldType,
+              llvm::StringRef FieldName) {
   llvm::Type *FT = m.parseType(FieldType, IsRepeated);
   if (FT == nullptr) {
     return false;
   }
 
   if (IsRepeated) {
-    m.getOrCreateStruct(StructName)
-        ->addRepeatedField(FieldName, FT, IsMutable);
+    m.getOrCreateStruct(StructName)->addRepeatedField(FieldName, FT, IsMutable);
   } else {
-    m.getOrCreateStruct(StructName)
-        ->addField(FieldName, FT, IsMutable);
+    m.getOrCreateStruct(StructName)->addField(FieldName, FT, IsMutable);
   }
 
   return true;

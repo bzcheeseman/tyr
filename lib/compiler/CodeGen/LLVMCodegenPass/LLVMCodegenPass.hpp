@@ -23,8 +23,8 @@
 #ifndef TYR_LLVMCODEGENPASS_HPP
 #define TYR_LLVMCODEGENPASS_HPP
 
-#include <string>
 #include <llvm/ADT/StringRef.h>
+#include <string>
 
 #include "Pass.hpp"
 

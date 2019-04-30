@@ -43,6 +43,10 @@ public:
       F.removeFnAttr("target-features");
       F.addFnAttr("target-features", m_features_);
 
+      if (F.isVarArg()) { // vararg functions don't support fastcc
+        continue;
+      }
+
       F.setCallingConv(llvm::CallingConv::Fast);
     }
 

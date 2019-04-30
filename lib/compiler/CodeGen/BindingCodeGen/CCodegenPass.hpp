@@ -23,10 +23,9 @@
 #ifndef TYR_CBINDINGVISITOR_HPP
 #define TYR_CBINDINGVISITOR_HPP
 
-#include <string>
-#include <llvm/ADT/StringRef.h>
-
 #include "Pass.hpp"
+
+#include <llvm/ADT/StringRef.h>
 
 namespace tyr {
 namespace pass {

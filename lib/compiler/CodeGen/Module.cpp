@@ -38,14 +38,6 @@
 tyr::Module::Module(const llvm::StringRef ModuleName, llvm::LLVMContext &Ctx)
     : m_ctx_(Ctx) {
   m_parent_ = llvm::make_unique<llvm::Module>(ModuleName, m_ctx_);
-
-  m_parent_->getOrInsertFunction("malloc", llvm::Type::getInt8PtrTy(m_ctx_),
-                                 llvm::Type::getInt64Ty(m_ctx_));
-  m_parent_->getOrInsertFunction("realloc", llvm::Type::getInt8PtrTy(m_ctx_),
-                                 llvm::Type::getInt8PtrTy(m_ctx_),
-                                 llvm::Type::getInt64Ty(m_ctx_));
-  m_parent_->getOrInsertFunction("free", llvm::Type::getVoidTy(m_ctx_),
-                                 llvm::Type::getInt8PtrTy(m_ctx_));
 }
 
 tyr::Module::~Module() {
@@ -62,6 +54,28 @@ void tyr::Module::setSourceFileName(const llvm::StringRef SourceFilename) {
   m_parent_->setSourceFileName(SourceFilename);
 }
 
+void tyr::Module::setBuiltinName(const llvm::StringRef Which,
+                                 const llvm::StringRef New) {
+  // Try to insert a new key
+  auto inserted = m_builtin_names_.insert({Which, New});
+  // If one already exists, then update it
+  if (!inserted.second) {
+    inserted.first->setValue(New);
+  }
+}
+
+void tyr::Module::finalizeBuiltins() {
+  m_parent_->getOrInsertFunction(m_builtin_names_.lookup("malloc"), llvm::Type::getInt8PtrTy(m_ctx_),
+                                 llvm::Type::getInt64Ty(m_ctx_));
+  m_parent_->getOrInsertFunction(m_builtin_names_.lookup("realloc"), llvm::Type::getInt8PtrTy(m_ctx_),
+                                 llvm::Type::getInt8PtrTy(m_ctx_),
+                                 llvm::Type::getInt64Ty(m_ctx_));
+  m_parent_->getOrInsertFunction(m_builtin_names_.lookup("free"), llvm::Type::getVoidTy(m_ctx_),
+                                 llvm::Type::getInt8PtrTy(m_ctx_));
+
+  m_builtins_finalized_ = true;
+}
+
 tyr::ir::Struct *tyr::Module::getOrCreateStruct(const llvm::StringRef name) {
   auto got_struct = m_module_structs_.find(name);
   if (got_struct != m_module_structs_.end()) {
@@ -72,8 +86,7 @@ tyr::ir::Struct *tyr::Module::getOrCreateStruct(const llvm::StringRef name) {
   return m_module_structs_[name];
 }
 
-const std::unordered_map<std::string, tyr::ir::Struct *> &
-tyr::Module::getStructs() const {
+const llvm::StringMap<tyr::ir::Struct *> &tyr::Module::getStructs() const {
   return m_module_structs_;
 }
 
@@ -108,7 +121,18 @@ bool tyr::Module::visit(tyr::ir::Pass &p) {
   return retval;
 }
 
-llvm::Module *tyr::Module::getModule() { return m_parent_.get(); }
+llvm::Module *tyr::Module::getModule() {
+  if (!m_builtins_finalized_) {
+    llvm::errs() << "Must finalize builtins before getting module pointer\n";
+    return nullptr;
+  }
+
+  return m_parent_.get();
+}
+
+llvm::StringMap<std::string> tyr::Module::getBuiltins() const {
+  return m_builtin_names_;
+}
 
 llvm::Type *tyr::Module::parseType(llvm::StringRef FieldType, bool IsRepeated) {
   llvm::Type *OutTy;
@@ -137,7 +161,7 @@ llvm::Type *tyr::Module::parseType(llvm::StringRef FieldType, bool IsRepeated) {
   } else if (FieldType == "double") {
     OutTy = llvm::Type::getDoubleTy(m_ctx_);
   } else if (m_module_structs_.find(FieldType) != m_module_structs_.end()) {
-    OutTy = m_module_structs_.at(FieldType)->getType()->getPointerTo(0);
+    OutTy = m_module_structs_[FieldType]->getType()->getPointerTo(0);
   } else {
     llvm::errs() << "Unknown field type: " << FieldType << "\n";
     return nullptr;
@@ -185,7 +209,7 @@ bool tyr::Module::linkRuntimeModules(const llvm::StringRef Directory,
   llvm::SmallVector<std::unique_ptr<llvm::Module>, 3> OutsideModules = {};
 
   if (rt::isFileEnabled(options)) { // link in the file helpers
-    llvm::SmallVector<char, 100> path{Directory.begin(), Directory.end()};
+    llvm::SmallVector<char, 0> path{Directory.begin(), Directory.end()};
     llvm::sys::path::append(path, TYR_FILE_HELPER_FILE);
     llvm::sys::fs::make_absolute(path);
     const std::string Filename{path.begin(), path.end()};
@@ -195,7 +219,7 @@ bool tyr::Module::linkRuntimeModules(const llvm::StringRef Directory,
   }
 
   if (rt::isB64Enabled(options)) { // link in the file helpers
-    llvm::SmallVector<char, 100> path{Directory.begin(), Directory.end()};
+    llvm::SmallVector<char, 0> path{Directory.begin(), Directory.end()};
     llvm::sys::path::append(path, TYR_BASE64_FILE);
     llvm::sys::fs::make_absolute(path);
     const std::string Filename{path.begin(), path.end()};
@@ -242,6 +266,10 @@ llvm::ExecutionEngine *tyr::getExecutionEngine(llvm::Module *Parent) {
   return engine;
 }
 
-bool tyr::rt::isFileEnabled(uint32_t options) { return (options & (0b1u << 0)) == 1; }
+bool tyr::rt::isFileEnabled(uint32_t options) {
+  return (options & (0b1u << 0u)) == 1u;
+}
 
-bool tyr::rt::isB64Enabled(uint32_t options) { return (options & (0b1u << 1)) >> 1 == 1; }
+bool tyr::rt::isB64Enabled(uint32_t options) {
+  return (options & (0b1u << 1u)) >> 1u == 1u;
+}
