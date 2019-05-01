@@ -23,7 +23,7 @@ matrix:
         - make check install
         - cmake .. -DBUILD_INTEGRATION_TESTS=ON -DBUILD_EXAMPLES=ON
         - make c_test && ./test/c_test
-        - make graph_example && ./example/graph/graph_example
+        - make graph_example && ./examples/graph/graph_example
     - language: rust
       script:
         - mkdir -p build && cd build

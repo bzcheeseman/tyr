@@ -26,15 +26,11 @@ extern "C" {
 #include <stdint.h>
 #include <stdlib.h>
 
-void *custom_alloc(uint64_t size) {
-  return malloc(size);
-}
+void *custom_alloc(uint64_t size) { return malloc(size); }
 
 void *custom_realloc(void *ptr, uint64_t new_size) {
   return realloc(ptr, new_size);
 }
 
-void custom_free(void *ptr) {
-  free(ptr);
-}
+void custom_free(void *ptr) { free(ptr); }
 }
