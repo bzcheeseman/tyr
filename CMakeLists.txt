@@ -41,4 +41,9 @@ if (BUILD_INTEGRATION_TESTS)
     add_subdirectory(test)
 endif (BUILD_INTEGRATION_TESTS)
 
+option(BUILD_EXAMPLES "Build the examples" ON)
+if (BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif (BUILD_EXAMPLES)
+
 include(FindClangFormat)

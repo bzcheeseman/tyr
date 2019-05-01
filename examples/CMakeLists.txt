@@ -1,0 +1,3 @@
+add_subdirectory(graph)
+
+set(ALL_CXX_SOURCE_FILES ${ALL_CXX_SOURCE_FILES} PARENT_SCOPE)

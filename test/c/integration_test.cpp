@@ -10,9 +10,9 @@
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
     You may obtain a copy of the License at
-    
+
         http://www.apache.org/licenses/LICENSE-2.0
-    
+
     Unless required by applicable law or agreed to in writing, software
     distributed under the License is distributed on an "AS IS" BASIS,
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,12 +23,12 @@
 #include "path.h"
 
 #include <array>
-#include <vector>
 #include <cassert>
-#include <random>
-#include <numeric>
-#include <iostream>
 #include <fstream>
+#include <iostream>
+#include <numeric>
+#include <random>
+#include <vector>
 
 const int NUM_ELTS = 512;
 std::chrono::high_resolution_clock::time_point start, stop;
@@ -56,7 +56,8 @@ uint8_t *get_serialized_storage(std::vector<float> &x, std::vector<float> &y) {
   return out;
 }
 
-bool check_serialized(uint8_t *serialized, const std::vector<float> &x, const std::vector<float> &y) {
+bool check_serialized(uint8_t *serialized, const std::vector<float> &x,
+                      const std::vector<float> &y) {
   path_t *deserialized = (path_t *)deserialize_path(serialized);
   stop = std::chrono::high_resolution_clock::now();
   free(serialized);
@@ -89,13 +90,13 @@ bool check_serialized(uint8_t *serialized, const std::vector<float> &x, const st
 uint8_t *get_serialized_graph() {
   std::vector<node_t *> nodes;
   for (int i = 0; i < 15; ++i) {
-    std::array<uint64_t, 3> data_vec {1, 1, 1};
+    std::array<uint64_t, 3> data_vec{1, 1, 1};
     nodes.push_back(create_node(i, data_vec.size(), data_vec.data()));
   }
 
   std::vector<edge_t *> edges;
   for (int i = 0; i < 14; ++i) {
-    edges.push_back(create_edge(i, i+1));
+    edges.push_back(create_edge(i, i + 1));
   }
 
   graph_t *g = create_graph();
@@ -111,7 +112,7 @@ uint8_t *get_serialized_graph() {
     uint16_t src, sink;
     get_edge_src(out_edges[i], &src);
     get_edge_sink(out_edges[i], &sink);
-    assert(src == i && sink == i+1);
+    assert(src == i && sink == i + 1);
   }
 
   node_t **out_nodes = nullptr;
@@ -153,7 +154,7 @@ bool check_graph(uint8_t *serialized) {
     uint16_t src, sink;
     get_edge_src(out_edges[i], &src);
     get_edge_sink(out_edges[i], &sink);
-    assert(src == i && sink == i+1);
+    assert(src == i && sink == i + 1);
   }
 
   node_t **out_nodes = nullptr;
@@ -179,7 +180,8 @@ bool check_graph(uint8_t *serialized) {
 }
 
 bool check_graph_file() {
-  graph_t *deserialized = (graph_t *)tyr_deserialize_from_file("serialized_graph.tsf", &deserialize_graph);
+  graph_t *deserialized = (graph_t *)tyr_deserialize_from_file(
+      "serialized_graph.tsf", &deserialize_graph);
 
   edge_t **out_edges = nullptr;
   get_graph_edge(deserialized, &out_edges);
@@ -187,7 +189,7 @@ bool check_graph_file() {
     uint16_t src, sink;
     get_edge_src(out_edges[i], &src);
     get_edge_sink(out_edges[i], &sink);
-    assert(src == i && sink == i+1);
+    assert(src == i && sink == i + 1);
   }
 
   node_t **out_nodes = nullptr;
@@ -215,13 +217,13 @@ bool check_graph_file() {
 uint8_t *get_b64_graph() {
   std::vector<node_t *> nodes;
   for (int i = 0; i < 15; ++i) {
-    std::array<uint64_t, 3> data_vec {1, 1, 1};
+    std::array<uint64_t, 3> data_vec{1, 1, 1};
     nodes.push_back(create_node(i, data_vec.size(), data_vec.data()));
   }
 
   std::vector<edge_t *> edges;
   for (int i = 0; i < 14; ++i) {
-    edges.push_back(create_edge(i, i+1));
+    edges.push_back(create_edge(i, i + 1));
   }
 
   graph_t *g = create_graph();
@@ -237,7 +239,7 @@ uint8_t *get_b64_graph() {
     uint16_t src, sink;
     get_edge_src(out_edges[i], &src);
     get_edge_sink(out_edges[i], &sink);
-    assert(src == i && sink == i+1);
+    assert(src == i && sink == i + 1);
   }
 
   node_t **out_nodes = nullptr;
@@ -272,7 +274,8 @@ uint8_t *get_b64_graph() {
 
 bool check_graph_b64(uint8_t *serialized) {
   const uint64_t b64_len = *(uint64_t *)serialized;
-  graph_t *deserialized = (graph_t *)tyr_deserialize_from_base64(&deserialize_graph, serialized);
+  graph_t *deserialized =
+      (graph_t *)tyr_deserialize_from_base64(&deserialize_graph, serialized);
   free(serialized);
 
   edge_t **out_edges = nullptr;
@@ -312,7 +315,8 @@ int main() {
   uint8_t *serialized = get_serialized_storage(x, y);
   assert(check_serialized(serialized, x, y));
 
-  std::cout << "Time elapsed for serialize/deserialize records (s): " << std::chrono::duration<double>(stop - start).count() << std::endl;
+  std::cout << "Time elapsed for serialize/deserialize records (s): "
+            << std::chrono::duration<double>(stop - start).count() << std::endl;
 
   uint8_t *serialized_graph = get_serialized_graph();
   assert(check_graph(serialized_graph));
@@ -324,5 +328,4 @@ int main() {
   std::cout << "Test succeeded" << std::endl;
 
   return 0;
-
 }

@@ -207,13 +207,14 @@ tyr::pass::LLVMIRGenPass::getFieldAllocSize(const tyr::ir::Field *f,
                                             llvm::IRBuilder<> &builder) const {
   const llvm::DataLayout &DL = m_parent_->getDataLayout();
 
-  if (f->type->isPointerTy() && !f->isStruct) { // array
+  if (f->isRepeated) {
     uint64_t FieldAllocSize =
         DL.getTypeAllocSize(f->type->getPointerElementType());
     llvm::Value *CountGEP =
         builder.CreateStructGEP(Struct, f->countField->offset);
-    return builder.CreateMul(builder.getInt64(FieldAllocSize),
-                             builder.CreateLoad(CountGEP));
+    // For repeated fields the size is the size of the field plus its count field?
+    return builder.CreateAdd(builder.CreateMul(builder.getInt64(FieldAllocSize),
+                             builder.CreateLoad(CountGEP)), builder.getInt64(sizeof(uint64_t)));
   }
 
   return builder.getInt64(DL.getTypeAllocSize(f->type));
@@ -791,12 +792,12 @@ bool tyr::pass::LLVMIRGenPass::getSerializer(const tyr::ir::Field *f) const {
     // Set the size of the thing (includes the size for the int header)
     OutSize = builder.CreateLoad(builder.CreateBitCast(
         SerializedField, builder.getInt64Ty()->getPointerTo(AddrSpace)));
-    // Copy the memory over - alignment is 1 because it's already uint8
+    // Copy the memory over - alignment is 0 because it's already uint8
     builder.CreateMemCpy(CurrentPtr, 0, SerializedField, 0, OutSize);
     // Free the allocated buffer
     builder.CreateCall(m_parent_->getFunction(m_builtin_names_.lookup("free")),
                        {SerializedField});
-  } else if (f->type->isPointerTy()) {
+  } else if (f->isRepeated) {
     // Get the count and store it first
     llvm::Value *Count = builder.CreateLoad(
         builder.CreateStructGEP(Self, f->countField->offset));

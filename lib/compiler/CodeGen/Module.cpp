@@ -65,12 +65,14 @@ void tyr::Module::setBuiltinName(const llvm::StringRef Which,
 }
 
 void tyr::Module::finalizeBuiltins() {
-  m_parent_->getOrInsertFunction(m_builtin_names_.lookup("malloc"), llvm::Type::getInt8PtrTy(m_ctx_),
-                                 llvm::Type::getInt64Ty(m_ctx_));
-  m_parent_->getOrInsertFunction(m_builtin_names_.lookup("realloc"), llvm::Type::getInt8PtrTy(m_ctx_),
+  m_parent_->getOrInsertFunction(m_builtin_names_.lookup("malloc"),
                                  llvm::Type::getInt8PtrTy(m_ctx_),
                                  llvm::Type::getInt64Ty(m_ctx_));
-  m_parent_->getOrInsertFunction(m_builtin_names_.lookup("free"), llvm::Type::getVoidTy(m_ctx_),
+  m_parent_->getOrInsertFunction(
+      m_builtin_names_.lookup("realloc"), llvm::Type::getInt8PtrTy(m_ctx_),
+      llvm::Type::getInt8PtrTy(m_ctx_), llvm::Type::getInt64Ty(m_ctx_));
+  m_parent_->getOrInsertFunction(m_builtin_names_.lookup("free"),
+                                 llvm::Type::getVoidTy(m_ctx_),
                                  llvm::Type::getInt8PtrTy(m_ctx_));
 
   m_builtins_finalized_ = true;

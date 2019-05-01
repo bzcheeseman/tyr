@@ -1,0 +1,19 @@
+struct node {
+  // Each node has an immutable identifier
+  int11 id
+  // And a list of data points
+  repeated int64 data
+}
+
+// Edges are immutable because they can be
+struct edge {
+  // 2 extra bits because why not
+  int13 src
+  int13 sink
+}
+
+// Graphs are made up of nodes and edges
+struct graph {
+  mutable repeated node
+  mutable repeated edge
+}
