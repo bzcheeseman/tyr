@@ -19,8 +19,8 @@ matrix:
     - language: c++
       script:
         - mkdir -p build && cd build
-        - cmake .. -DBUILD_INTEGRATION_TESTS=OFF -DBUILD_EXAMPLES=OFF
-        - make check
+        - cmake .. -DCMAKE_INSTALL_PREFIX=. -DBUILD_INTEGRATION_TESTS=OFF -DBUILD_EXAMPLES=OFF
+        - make check install
         - cmake .. -DBUILD_INTEGRATION_TESTS=ON -DBUILD_EXAMPLES=ON
         - make c_test && ./test/c_test
         - make graph_example && ./example/graph/graph_example

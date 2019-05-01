@@ -44,7 +44,4 @@ if (BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif (BUILD_EXAMPLES)
 
-configure_file(${CMAKE_SOURCE_DIR}/cmake/tyr-config.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/tyr-config.cmake @ONLY)
-configure_file(${CMAKE_SOURCE_DIR}/cmake/tyr-config-version.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/tyr-config-version.cmake @ONLY)
-
 include(FindClangFormat)
