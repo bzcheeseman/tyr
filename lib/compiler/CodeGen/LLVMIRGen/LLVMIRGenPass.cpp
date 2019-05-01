@@ -212,9 +212,8 @@ tyr::pass::LLVMIRGenPass::getFieldAllocSize(const tyr::ir::Field *f,
         DL.getTypeAllocSize(f->type->getPointerElementType());
     llvm::Value *CountGEP =
         builder.CreateStructGEP(Struct, f->countField->offset);
-    // For repeated fields the size is the size of the field plus its count field?
-    return builder.CreateAdd(builder.CreateMul(builder.getInt64(FieldAllocSize),
-                             builder.CreateLoad(CountGEP)), builder.getInt64(sizeof(uint64_t)));
+    return builder.CreateMul(builder.getInt64(FieldAllocSize),
+                             builder.CreateLoad(CountGEP));
   }
 
   return builder.getInt64(DL.getTypeAllocSize(f->type));

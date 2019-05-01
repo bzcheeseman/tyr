@@ -12,8 +12,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
-set(CMAKE_CXX_FLAGS "-O0 -g ${CMAKE_CXX_FLAGS}")
-
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 set(LLVM_VERSION 8)
 
@@ -45,5 +43,8 @@ option(BUILD_EXAMPLES "Build the examples" ON)
 if (BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif (BUILD_EXAMPLES)
+
+configure_file(${CMAKE_SOURCE_DIR}/cmake/tyr-config.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/tyr-config.cmake @ONLY)
+configure_file(${CMAKE_SOURCE_DIR}/cmake/tyr-config-version.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/tyr-config-version.cmake @ONLY)
 
 include(FindClangFormat)
