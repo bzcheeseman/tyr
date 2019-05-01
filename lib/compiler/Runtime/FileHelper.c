@@ -53,6 +53,7 @@ bool tyr_serialize_to_file(const char *filename, serializer_fn s,
     return false;
   }
 
+  free(serialized);
   fclose(file);
   return true;
 }
