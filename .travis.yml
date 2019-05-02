@@ -27,7 +27,7 @@ matrix:
     - language: rust
       script:
         - mkdir -p build && cd build
-        - cmake .. -DCMAKE_INSTALL_PREFIX=../test/install -DBUILD_INTEGRATION_TESTS=OFF
+        - cmake .. -DCMAKE_INSTALL_PREFIX=../test/install -DBUILD_INTEGRATION_TESTS=OFF -DBUILD_EXAMPLES=OFF
         - make check install
         - pushd ../test && install/bin/tyr path.tyr -bind-lang=rust -emit-llvm -out-dir=./rust -file-utils -base64 && popd
         - pushd ../test/rust && cargo test
